@@ -10,11 +10,14 @@ class Node {
   int data;
   Node* left;
   Node* right;
+  int height;
  public:
   Node(int const& data);
   ~Node();
   int getData();
   void setData(int const& data);
+  int getHeight();
+  void setHeight(int const& height);
   Node* getLeft();
   Node* getRight();
   void setLeft(Node* node);

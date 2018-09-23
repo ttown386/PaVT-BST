@@ -23,6 +23,14 @@ void Node::setData(int const& data) {
   this->data = data;
 }
 
+int Node::getHeight() {
+  return height;
+}
+
+void Node::setHeight(int const& height) {
+  this->height = height;
+}
+
 Node* Node::getLeft() {
   return left;
 }
