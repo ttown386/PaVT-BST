@@ -82,3 +82,12 @@ fabric.properties
 # google test
 lib/googletest-master
 
+.idea/codeStyles/codeStyleConfig.xml
+*.xml
+src/serial/.idea/serial.iml
+.idea/codeStyles/codeStyleConfig.xml
+.idea/codeStyles/Project.xml
+.idea/codeStyles/Project.xml
+.idea/codeStyles/codeStyleConfig.xml
+.idea/codeStyles/Project.xml
+.idea/codeStyles/codeStyleConfig.xml
