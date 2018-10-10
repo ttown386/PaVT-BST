@@ -1,0 +1,19 @@
+Node* PaVTTraversal(key k){
+	n = root
+	f = path to take based on root and key (so less than is left and greater than is right)
+	While(n.f != null ) //so while the next path we take is not null
+		n = n.f // So it would be the next node in our path
+		f = path based on n and key k
+		if(f == null){ //it is null if the next path function for f is returning null because we are at the node we are looking for
+			if n.marked and restart since there has been a possible mutation (our validation)
+			Lock n	//Actually Lock n here since the mark is atomically changed using CAS so if it succeeds then we say it is in the tree
+			return n if n isn't marked since we found our key
+		}
+	}
+	Lock n	//We lock at this point because it needs to also serve as a lock to the snapshot to ensure that no changes are made to this node or its snapshot while we change it
+	//We need to atomically read this snapshot from our node
+	//This could represent a change in the path if it isn't our node and the root
+	S = nodes snapshot
+	if the path in S has been mutated then unlock n and restart (this is validating that another thread hasn't changed our S at all)
+	return n
+}
