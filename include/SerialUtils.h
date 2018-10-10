@@ -5,12 +5,12 @@
 #ifndef CONCURRENTTREETRAVERALS_SERIALUTILS_H
 #define CONCURRENTTREETRAVERALS_SERIALUTILS_H
 
-#include "../../include/BinarySearchTree.h"
+#include "BinarySearchTree.h"
+#include <list>
 
-class SerialUtils {
+std::list<int> preOrderTraversal(BinarySearchTree &bst);
+std::list<int> inOrderTraversal(BinarySearchTree &bst);
+void printPostOrder(BinarySearchTree bst);
 
-  static void printInOrder(BinarySearchTree bst);
-
-};
 
 #endif //CONCURRENTTREETRAVERALS_SERIALUTILS_H
