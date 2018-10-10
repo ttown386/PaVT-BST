@@ -11,6 +11,12 @@ include_directories(lib/googletest-master/googlemock/include)
 include_directories(include)
 include_directories(test)
 
-add_executable(ConcurrentTreeTraverals main.cpp src/serial/Node.cc test/TestNode.cpp)
+add_executable(ConcurrentTreeTraverals
+        main.cpp
+        src/serial/Node.cc
+        test/TestNode.cpp
+        src/serial/BinarySearchTree.cc
+        src/serial/SerialUtils.cc
+        test/TestBinarySearchTree.cpp)
 
 target_link_libraries(ConcurrentTreeTraverals gtest gtest_main)
