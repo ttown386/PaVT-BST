@@ -5,11 +5,11 @@
 #include "../../include/ExternalBST.h"
 #include <algorithm>
 
-ExternalBST::InternalBST() {
+ExternalBST::ExternalBST() {
   root = nullptr;
 }
 
-ExternalBST::~InternalBST() {
+ExternalBST::~ExternalBST() {
   delete root;
 }
 
@@ -195,7 +195,7 @@ bool ExternalBST::contains(int const& key){
  * @param Expecting the right node of a node to be removed with two children
  * @return Lowest valued node
  */
-Node* InternalBST::findMin(Node *node) {
+Node* ExternalBST::findMin(Node *node) {
   if(node->getLeft() == nullptr) {
     node = node->getLeft();
   }
