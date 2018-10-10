@@ -3,5 +3,11 @@ project(serial)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(serial AVLTree.cc ../../include/AVLTree.h Node.cc ../../include/Node.h InternalBST.cc ../../include/InternalBST.h ExternalBST.cc ../../include/ExternalBST.h)
+add_executable(serial
+        Node.cc
+        ../../include/Node.h
+        BinarySearchTree.cc
+        ../../include/BinarySearchTree.h
+        SerialUtils.cc
+        ../../include/SerialUtils.h)
 
