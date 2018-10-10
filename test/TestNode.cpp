@@ -45,4 +45,7 @@ TEST_F(TestNode, inserting) {
 
   ASSERT_EQ(val2, node->getLeft()->getData());
   ASSERT_EQ(val1, node->getRight()->getData());
+
+  // the tear down method will delete the other nodes
+  // since the main node has a reference to them
 }
