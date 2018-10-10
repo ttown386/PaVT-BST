@@ -5,7 +5,7 @@
 #ifndef CONCURRENTTREETRAVERALS_EXTERNALBST_H
 #define CONCURRENTTREETRAVERALS_EXTERNALBST_H
 
-#include "../../include/Node.h"
+#include "Node.h"
 
 class ExternalBST {
  private:
@@ -13,8 +13,8 @@ class ExternalBST {
   Node* findMin(Node *root);
 
  public:
-  InternalBST();
-  ~InternalBST();
+  ExternalBST();
+  ~ExternalBST();
   bool insert(int const& key);
   bool remove(int const& key);
   bool contains(int const& key);

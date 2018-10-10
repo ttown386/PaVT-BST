@@ -8,7 +8,7 @@
 #ifndef CONCURRENTTREETRAVERALS_AVLTREE_H
 #define CONCURRENTTREETRAVERALS_AVLTREE_H
 
-#include "../../include/Node.h"
+#include "Node.h"
 
 
 class AVLTree {

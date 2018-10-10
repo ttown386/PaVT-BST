@@ -5,7 +5,7 @@
 #ifndef CONCURRENTTREETRAVERALS_INTERNALBST_H
 #define CONCURRENTTREETRAVERALS_INTERNALBST_H
 
-#include "../../include/Node.h"
+#include "Node.h"
 
 class InternalBST {
  private:
