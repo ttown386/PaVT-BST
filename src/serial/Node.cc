@@ -8,6 +8,8 @@ Node::Node(int const& data) {
   setData(data);
   setLeft(nullptr);
   setRight(nullptr);
+  setParent(nullptr);
+  setHeight(0);
 }
 
 Node::~Node() {
@@ -39,10 +41,18 @@ Node* Node::getRight() {
   return right;
 }
 
+Node* Node::getParent() {
+  return parent;
+}
+
 void Node::setLeft(Node* node) {
   this->left = node;
 }
 
 void Node::setRight(Node* node) {
   this->right = node;
+}
+
+void Node::setParent(Node* node) {
+  this->parent = node;
 }

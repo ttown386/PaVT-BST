@@ -10,6 +10,7 @@ class Node {
   int data;
   Node* left;
   Node* right;
+  Node* parent;
   int height;
  public:
   Node(int const& data);
@@ -20,8 +21,10 @@ class Node {
   void setHeight(int const& height);
   Node* getLeft();
   Node* getRight();
+  Node* getParent();
   void setLeft(Node* node);
   void setRight(Node* node);
+  void setParent(Node* node);
 };
 
 #endif //CONCURRENTTREETRAVERALS_NODE_H
