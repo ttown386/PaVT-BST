@@ -19,6 +19,7 @@ class BinarySearchTree {
   int height(Node *node);
   int balanceFactor(Node *node);
   void rebalance(Node *node);
+  Node *traverse(Node *node, int const &data);
 
 // public:
   BinarySearchTree(bool isAvl=false);

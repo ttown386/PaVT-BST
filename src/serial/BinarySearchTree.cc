@@ -9,6 +9,25 @@
 const int MAXBF = 1;
 const int MINBF = -1;
 
+namespace utils {
+Node *findMin(Node *node);
+}
+
+Node* utils::findMin(Node *node) {
+  if(node->getLeft() == nullptr) {
+    node = node->getLeft();
+  }
+  while(node->getLeft()->getLeft() != nullptr) {
+    node = node->getLeft();
+  }
+  //If the node we are returning has items attached to it make sure to not trim those off
+  //We do so by setting our left node to their right node
+  if(node->getLeft()->getRight() != nullptr) {
+    node->setLeft(node->getLeft()->getRight());
+  }
+  return node->getLeft();
+}
+
 BinarySearchTree::BinarySearchTree(bool isAvl) {
   this->isAvl = isAvl;
 }
@@ -21,67 +40,140 @@ Node *BinarySearchTree::getRoot() {
   return root;
 }
 
-void BinarySearchTree::insert(int const &data) {
-  // Tree is empty
-  if (root == nullptr) {
-    root = new Node(data);
-    root->setParent(nullptr);
-    return;
-  }
-
+Node *BinarySearchTree::traverse(Node *node, int const &data) {
   // Otherwise we traverse
   Node *curr = root;
   Node *parent = nullptr;
 
   // traverse
-  while (true) {
+  while (curr!=nullptr) {
 
     // We have a duplicate
     // TODO incorperate for External BST
-    if (curr->getData()==data) {
-      return;
+    if (curr->getData() == data) {
+      return curr;
     }
 
     // update parent;
     parent = curr;
 
     // traverse to next child
-    bool parentIsLarger= data < parent->getData();
+    bool parentIsLarger = data < parent->getData();
     curr = (parentIsLarger ? curr->getLeft() : curr->getRight());
-
-    // check if the current node is a leaf
-    if (curr == nullptr) {
-
-      curr = new Node(data);
-      // Get the height of the new node
-      curr->setHeight(0);
-
-      // update the parent of new node
-      curr->setParent(parent);
-
-      // If the parent is larger than the child, set the left pointer
-      // of parent to be the new node
-      if (parentIsLarger) {
-        parent->setLeft(curr);
-      } else {
-        parent->setRight(curr);
-      }
-      // Exit the initial traversal
-      break;
-    }
-
   }
 
-  // Update heights
-  updateHeights(curr);
+  return (parent == nullptr ? root : parent);
+}
+
+void BinarySearchTree::insert(int const &data) {
+
+  // TODO need to support sentinel
+  if (root == nullptr) {
+    root == new Node(data);
+    return;
+  }
+
+  // Otherwise we traverse
+  Node *curr = traverse(root, data);
+
+  // We have a duplicate
+  // TODO incorperate for External BST
+  if (curr->getData()==data) {
+    return;
+  }
+
+  // update parent;
+  Node *parent = curr;
+
+  // traverse to next child
+  bool parentIsLarger= data < parent->getData();
+  curr = (parentIsLarger ? curr->getLeft() : curr->getRight());
+
+  // check if the current node is a leaf
+  if (curr == nullptr) {
+
+    curr = new Node(data);
+    // Get the height of the new node
+    curr->setHeight(0);
+
+    // update the parent of new node
+    curr->setParent(parent);
+
+    // If the parent is larger than the child, set the left pointer
+    // of parent to be the new node
+    if (parentIsLarger) {
+      parent->setLeft(curr);
+    } else {
+      parent->setRight(curr);
+    }
+  }
+
   // Perform AVL rotations if applicable
   if (isAvl){
+    // Update heights
+    updateHeights(curr);
     rebalance(curr);
   }
 }
 
 void BinarySearchTree::remove(int const &data) {
+  
+  while (true) {
+    Node *curr = traverse(root, data);
 
+    // TODO return false here
+    if (curr==nullptr || curr->getData()!= data) {
+      return;
+    }
+
+    // Lock all nodes
+
+    Node *parent = curr->getParent();
+    Node *leftChild = curr->getLeft();
+    Node *rightChild = curr->getRight();
+
+    // Easy removal
+    if (leftChild==nullptr || rightChild==nullptr) {
+      Node *currChild = (leftChild==nullptr) ? rightChild : leftChild;
+      // TODO remove nullptr and incorperate sentinel node
+      if (parent!=nullptr && parent->getLeft()==curr) {
+        parent->setLeft(currChild);
+      } else if (parent!=nullptr ){
+        parent->setRight(currChild);
+      }
+      // Call update Snaps here instead of updating child's parent pointer
+      currChild->setParent(parent);
+      delete curr;
+      return;
+    } else {
+      // TODO this will be changed with the concurrent version
+      // Calls remove twice which will be redundant
+      Node *min = utils::findMin(rightChild);
+      // TODO remove nullptr and incorperate sentinel node
+      if (parent!=nullptr && parent->getLeft()==curr) {
+        parent->setLeft(min);
+      } else if (parent!=nullptr){
+        parent->setRight(min);
+      }
+      // Finish updating all pointers at old location
+      Node *minOldParent = min->getParent();
+
+      if (min!=rightChild) {
+        // we know minsOldParent is greater than it
+        minOldParent->setLeft(nullptr);
+
+        rightChild->setParent(min);
+        leftChild->setParent(min);
+
+        min->setRight(rightChild);
+      }
+      // do this no matter what
+      min->setParent(parent);
+      min->setLeft(leftChild);
+      delete curr;
+      return;
+    }
+  }
 }
 
 bool BinarySearchTree::contains(int const &data) {
