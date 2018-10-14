@@ -13,6 +13,6 @@ Bool PaVTTraversal(key k){
 	// Able to optimize this in bst by using our other node that will give us a succinct path instead of for
 	// We can do this since that implies the range at which we can find our node
 	S = an Atomic read of the nodes snapshot(so of n and root)
-	if the path in S has been mutated then restart
+	if the S has has been mutated so that we can't  then restart
 	return false
 }
