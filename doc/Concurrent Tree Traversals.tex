@@ -57,14 +57,25 @@ In this section we will be going over what each function does and describe the l
 \subsection{Snapshots}
 Snapshots are an integral part of our design because it will guarantee that our contains will not miss any elements that have been moved since it has started. We implemented it by having each node contain a succinct snapshot that contains itself and its successor or predecessor[2(Power Point Slides One)]. This will create an implicit list of nodes with keys in ascending order, note that it isn't linked so we cannot traverse through that list with our contains. We do not search through this linked list, but if the item is not within that list then we can say that it does not exist.
 \subsection{UpdateSnaps}
+The UpdateSnaps() function called by Insert() or Remove() to update the succinct snapshots of every node that has been changed by the that Insert() or Remove() call. UpdateSnaps() takes one of the following as its parameters:
+\begin{enumerate}[label=(\roman*)]
+	\item A Node
+	\item A Node plus condition
+	\item Four Nodes
+\end{enumerate}
+(I) is used only for Inserts() since we only care about changing that, Remove() will call (II) if the left and right node are leaves or if the right node is its successor and (III) is called when the node being removed has two children and its right child has left child, which will be our nodes successor. This function is recursive and locks nodes if Remove() has called it to change the parents succinct. 
 \subsection{Contains}
 The Contains() function that we have developed has to be lock-free or there was no point in recreating this paper, so when we develop it we can only use compare-and-swaps. Knowing this we have developed it to at most only use one compare-and-swap, which will be used if we do not find the item. Our contains will have two scenarios happen, either the item has been found when we traverse from the root with our key or we have reached a leaf and cannot find the item.
 Our implementation has a lock-free contains and a deadlock-free insert and removes. Our contains() is lock-free because it only uses compare-and-swap, which has a consensus number of infinity, so by only using that atomic operation in that function we can say that even if it fails at least one other operation managed to succeed. If we find our item/key at a node in the list then we check if has been logically removed with a marking on that node and if it not marked then we return true otherwise we restart. This trait proves that this implementation is not starvation-free so it is not wait-free as well. If Contains() could not find the item/key then it reads the succinct snapshot of the node and checks whether or not it is contained in that snapshot. If it is then that means the node has been swapped out and it will restart to find it otherwise we return false.
 \subsection{TraverseNLock}
-Our TraverseNLock() implementation is identical or contains except that it returns our node to lock and
+TraverseNLock() will lock the node we are trying to find or a leaf in the tree if we didn't find it. Our implementation is identical to Contains() except that it contains locks and returns our node that is now locked instead of a boolean. There are two possible places that we lock, the first being right after we check the marking of our item/key if we found it. The second possible place to lock our node is right before reading the succinct path snapshot to guarantee, which will guarantee that no contaminated data in the set if we do it here.
 \section{Design Decisions}
 
 TALK ABOUT HOW WE DIDN'T USE A LIST FOR SNAPSHOTS AND HOW DAMN CONFUSING IT WAS BECAUSE OF THE ORIGINAL AUTHORS USING A LIST
+
+TALK ABOUT WHY WE LOCK BEFORE THE READ
+
+Locking Order as well
 
 We designed our implementation to mirror the pseudo-code of the paper in [1]. This came with benefits of being able to efficiently program and recreate most of what the authors intended for us to implement. However, there were also some challenges as well since they intentionally left out where to include some locks in the pseudo-code and omitted some parts of the code for updating our snapshots. They did mention the potential location of each lock or where certain critical sections are with respect to the pseudo-code and presented some locations for putting locks in the insert and removal implementations. By leaving out some locations this give us enough leeway to interpret when we should use locks in our UpdateSnaps() function, but we have to implement to maintain correctness for our algorithm.
 
