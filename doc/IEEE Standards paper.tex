@@ -6,7 +6,6 @@
 \usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
-\usepackage{enumitem}
 \usepackage{xcolor}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -35,68 +34,11 @@ Orlando, FL \\}
 This document is a model and instructions for \LaTeX.
 This and the IEEEtran.cls file define the components of your paper [title, text, heads, etc.]. *CRITICAL: Do Not Use Symbols, Special Characters, Footnotes, 
 or Math in Paper Title or Abstract.
-Present what we are doing. 
-
-We introduce our reimplementation of what is considered a practical and concurrent binary search tree that maintains logical ordering information within the data structure, but our implementation will be transformed and compared against a transactional data structure. A transactional data structure will be implemented using software transactional memory which provides a system for executing atomic sections of code instead of using locks. This will allow for users to monitor memory locations that threads read and write to.
-Describe progress and correctness conditions of the data structure here.
-
 \end{abstract}
 
 \begin{IEEEkeywords}
 component, formatting, style, styling, insert
 \end{IEEEkeywords}
-
-\section{Introduction}
-Introduction should state the problem at hand and give some background information and more about the progress and correctness. 
-Define and explain our topic as well the transactional data structure.
-Transactional data structure are
-
-
-\section{Research}
-
-The research in this area, so compare to other papers?
-
-\section{Implementation}
-
-MENTIONS WHAT EACH FUNCTION DOES.
-In this section we will be going over what each function does and describe the linearization points of each function (excluding TraverseNLock). We will also mention progress guarantee, correctness condition and synchronization techniques (NOTE: Maybe move this technique idea to design). The functions to be described are Contains(), Insert(), Remove(), UpdateSnaps() and TraverseNLock(). We will also describe how we initialize our tree and our sentinel nodes.
-Contains().
-Our implementation has a lock-free contains and a deadlock-free insert and removes. Our contains() is lock-free because it only uses compare-and-swap, which has a consensus number of infinity, so by only using that atomic operation in that function we can say that even if it fails at least one other operation managed to succeed.
-
-\section{Design Decisions}
-
-We designed our implementation to mirror the pseudocode of the paper in [1]. This came with benefits of being able to efficiently program and recreate most of what the authors intended for us to implement. However, there were also some challenges as well since they intentionally left out where to include some locks in the pseudocode and omitted some parts of the code for updating our snapshots. They did mention the potential location of each lock or where certain critical sections are with respect to the pseudocode and presented some locations for putting locks in the insert and removal implementations. By leaving out some locations this give us enough leeway to interpret when we should use locks in our UpdateSnaps() function, but we have to implement to maintain correctness for our algorithm.
-
-\section{Testing}
-
-Our testing is comprised of two parts for increased clarity. Our first part consists of the technical details of how we created our experiments and what we tested it on and compare the tests to. The second part focuses on what our results were and what it means.
-
-\subsection{Set-Up For Experiments}
-Before we begin testing we must first realize that we use C++ while they use Java, so ours should theoretically perform faster than the original implementation due to Java overhead. Our tests thread count will be smaller in our testing when compared to the original tests because our requirements for testing have to be smaller in scale, so it is possible for our reimplementation to not perform as well as the original for higher thread counts. With that in mind we evaluated our internal BST and internal AVL tree and compared them to other recent implementations and our transactional data structure. We compared our BST to the results given to us by [1 (The Paper)] as well as LO-BST, which is a lock-based internal BST, and the transactional data BST implementation. We then compared our internal AVL tree to the results given to us by [1 (The Paper)] and to LO-AVL, which is a lock-based internal AVL tree, and our transactional data AVL implementation. 
-We ran these experiments on a [INSERT PROCESSOR, RAM, Cores, Processors with how many cores, and whether it allows for hyperthreading, OS that it ran on(Probably Linux) with version, What IDE and environment that we ran it on as well].
-We try to keep consistency with the original implementation with our experiments, so we directly copied their experiments for accurate comparisons by following a “standard empirical evaluation” [1] (Put 7,8,12 from their paper since that is referenced) . Our experiments will be executing a series of five-second trials and will be comparing the number of operations each one executes within that time frame. The trials will be ran ten times for our two implementations and averaged out and compared to the results given in Table 1 (from paper [1]). There will be 3 different test scenarios for every implementation with each scenario having its own unique workload. The three scenarios are : 
-\begin{enumerate}[label=(\roman*)]
-	\item 90\% contains, 9\% insert, 1\% remove
-	\item 70\% contains, 20\% insert, 10\% remove
-	\item 0\% contains, 50\% inserts, 10\% removes
-\end{enumerate}
-
-
-\subsection{Results}
-
-Results go here and compare what we got to what they got
-Also put 9 graphs up for each distribution of operations and transaction size
-
-\section{Appendix}
-\section{Dictionary}
-\begin{itemize}[label=$\ast$]
-	\item Concurrency
-	\item Logical ordering information
-	\item Binary Search Tree
-	\item Transactional Data Structure
-	\item Software Transactional Memory
-	\item Snapshots
-\end{itemize}
 
 \section{Ease of Use}
 
@@ -300,13 +242,6 @@ element symbols.
 For papers published in translation journals, please give the English 
 citation first, followed by the original foreign-language citation \cite{b6}.
 
-% TODO: FIX REFERENCES
-%Practical Concurrent Traversals in Search Trees 
-%http://webee.technion.ac.il/~idish/ftp/TransactionalLibrariesPLDI16.pdf - Transactional Data Structure Libraries
-%http://webee.technion.ac.il/~idish/ftp/TransactionalLibrariesPLDI16.pdf
-
-
-
 \begin{thebibliography}{00}
 \bibitem{b1} G. Eason, B. Noble, and I. N. Sneddon, ``On certain integrals of Lipschitz-Hankel type involving products of Bessel functions,'' Phil. Trans. Roy. Soc. London, vol. A247, pp. 529--551, April 1955.
 \bibitem{b2} J. Clerk Maxwell, A Treatise on Electricity and Magnetism, 3rd ed., vol. 2. Oxford: Clarendon, 1892, pp.68--73.
@@ -315,8 +250,6 @@ citation first, followed by the original foreign-language citation \cite{b6}.
 \bibitem{b5} R. Nicole, ``Title of paper with only first word capitalized,'' J. Name Stand. Abbrev., in press.
 \bibitem{b6} Y. Yorozu, M. Hirano, K. Oka, and Y. Tagawa, ``Electron spectroscopy studies on magneto-optical media and plastic substrate interface,'' IEEE Transl. J. Magn. Japan, vol. 2, pp. 740--741, August 1987 [Digests 9th Annual Conf. Magnetics Japan, p. 301, 1982].
 \bibitem{b7} M. Young, The Technical Writer's Handbook. Mill Valley, CA: University Science, 1989.
-
-\bibitem{b1}
 
 \end{thebibliography}
 \vspace{12pt}
