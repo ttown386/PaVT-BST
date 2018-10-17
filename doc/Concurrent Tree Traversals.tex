@@ -40,17 +40,16 @@ Search Trees, Concurrency, AVL, Data Structures
 \end{IEEEkeywords}
 
 \section{Introduction}
-Introduction should state the problem at hand and give some background information and more about the progress and correctness. 
-Define and explain our topic as well the transactional data structure.
-Transactional data structure are
+%Introduction should state the problem at hand and give some background %information and more about the progress and correctness. 
+%Define and explain our topic as well the transactional data structure.
+%Transactional data structure are
 
 Concurrency is rampant in today's programming society and we are quickly adapting all serial data structures into concurrent data structures to actually benefit from our ever increasing core count of our CPU's. This now leads into our topic which covers two important and well known data structures, which are Binary Search Trees (BST) and Adelson-Velskii and Landis Trees (AVL). A Binary Search Tree is a node-based data structure that has a root that is the top of the tree and has two subtrees, which are the left and right subtree. The left subtree contains all nodes smaller than the current nodes key and the right subtree contains all nodes with keys greater than the current nodes key. An AVL Search tree is a modified BST, but now we also keep track of heights of all nodes, so that the left and right subtree height don't differ by more than one. If the differences between the two subtrees are greater than one then we rebalance the trees to keep the heights within that range to speed up our search time. The two trees must maintain two rules for our concurrent implementation, the first rule is that it cannot contain duplicates and the second rule is that it has to follow the standard BST/AVL structural layout.
 	A potential problem is presented when implementing certain methods concurrently. Some questions that are brought up would be when to lock, the locking order and how can we implement a contains that is exceptionally fast and lightweight, since contains is typically called the most out of any method. Even with all this in mind the main question that hasn't been asked is now being answered, which is how do we generalize an implementation such that it can be applicable to any search tree and not just create specialized solutions [1]? The answer to such a practical search tree is one that introduces a condition for path traversal validation, such that it is applicable to any tree. The condition determines whether or not our key is in the tree by looking at the succinct path snapshot (SPS) and the traversal only needs to take a path limited by our succinct path snapshot. If the key is contained in one of the snapshots then the condition states that the key is in the tree otherwise it states that it does not exist in the tree.  Also, our snapshots will get modified if there are any changes or mutations to the tree or along a path. Using this idea of succinct path snapshots we can also extend it and create a lock-free implementation of contains since it now has a method to verify if our path has been modified without the need to traverse the tree again. This contains however, will traverse again if the verification method fails and because of this it cannot be wait-free since it could fail an indefinite amount of times (Sec 3).
 	Our path condition also makes it possible to extend our implementation to allow for customized operations, such as rotations, without having to complicate our program any further. This will prove to be incredibly useful because one of our goals is to recreate our program to be a transactional data structure. A transactional data structure focuses on atomicity and on isolation to ensure that each action takes effect in sequential order.
 
-\section{Research}
-
-The research in this area, so compare to other papers?
+%\section{Research}
+%The research in this area, so compare to other papers?
 
 \section{Implementation}
 In this section we will be going over what each function does and describe the linearization points of each function (excluding TraverseNLock). We will also mention progress guarantee, correctness condition and synchronization techniques (NOTE: Maybe move this technique idea to design). The functions to be described are Contains(), Insert(), Remove(), UpdateSnaps() and TraverseNLock(). We will also describe how we initialize our tree and our sentinel nodes. Important note is that every node has an atomic mark designating whether or not it has been logically removed.
@@ -92,15 +91,17 @@ A concurrent remove will take in a key k to remove from our tree and if it retur
 \end{enumerate}  
 \section{Design Decisions}
 
- locking-order
+%locking-order
 
 %TALK ABOUT HOW WE DIDN'T USE A LIST FOR SNAPSHOTS
 
 %TALK ABOUT WHY WE LOCK BEFORE THE READ
 
-Locking Order as well
+%Locking Order as well
 
 We designed our implementation to mirror the pseudo-code of the paper in [1]. This came with benefits of being able to efficiently program and recreate most of what the authors intended for us to implement. However, there were also some challenges as well since they intentionally left out where to include some locks in the pseudo-code and omitted some parts of the code for updating our snapshots. They did mention the potential location of each lock or where certain critical sections are with respect to the pseudo-code and presented some locations for putting locks in the insert and removal implementations. By leaving out some locations this give us enough leeway to interpret when we should use locks in our UpdateSnaps() function, but we have to implement to maintain correctness for our algorithm.
+	One common problem when designing concurrent structures is addressing deadlocks and preventing such scenarios from happening. First we should expand on what a deadlock is. A deadlock occurs when one thread locks a resource and needs another resource that another thread has locked and that other thread also needs the first threads resource before unlocking its own resource. This creates a cyclic dependency and thus we can say that that algorithm is prone to deadlocking. We solve this problem by implementing a general locking order that all methods will follow. When traversing we will lock from the bottom-most leaf and work up the tree. When we break this ordering, by locking a node that isn't a leaf, we will attempt to lock nodes below us, so that if it fails we will release our lock. If we didn't release our lock on a failed attempt then we will create this cyclic dependency mentioned earlier and create a deadlock scenario which will ruin our correctness condition.
+	Linearization is important when mentioning the correctness condition of our algorithm.
 
 \section{Testing}
 
@@ -118,8 +119,8 @@ We try to keep consistency with the original implementation with our experiments
 
 \subsection{Results}
 
-Results go here and compare what we got to what they got
-Also put 9 graphs up for each distribution of operations and transaction size
+%Results go here and compare what we got to what they got
+%Also put 9 graphs up for each distribution of operations and transaction size
 
 \section{Appendix}
 
@@ -151,6 +152,7 @@ Also put 9 graphs up for each distribution of operations and transaction size
 
 \begin{thebibliography}{00}
 \bibitem{b1} Dana Drachsler-Cohen, Martin Vechev, and Eran Yahav. 2018. Practical concurrent traversals in search trees. In Proceedings of the 23rd ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming (PPoPP '18). ACM, New York, NY, USA, 207-218. DOI: https://doi.org/10.1145/3178487.3178503
+\bibitem{b2} Dana Drachsler-Cohen, Martin Vechev, and Eran Yahav. 2014. Practical Conccurent Binary Search Trees via Logical Ordering. http://www.cs.technion.ac.il/~yahave/papers/ppopp14-trees.pdf
 
 \end{thebibliography}
 
