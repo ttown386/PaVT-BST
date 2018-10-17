@@ -33,13 +33,10 @@ Orlando, FL \\}
 
 \begin{abstract}
 We introduce our reimplementation of what is considered a practical and concurrent binary search tree that maintains logical ordering information within the data structure, but our implementation will be transformed and compared against a transactional data structure. A transactional data structure will be implemented using software transactional memory which provides a system for executing atomic sections of code instead of using locks. This will allow for users to monitor memory locations that threads read and write to.
-
-Describe progress and correctness conditions of the data structure here.
-
 \end{abstract}
 
 \begin{IEEEkeywords}
-component, formatting, style, styling, insert
+Search Trees, Concurrency, AVL, Data Structures
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -47,6 +44,9 @@ Introduction should state the problem at hand and give some background informati
 Define and explain our topic as well the transactional data structure.
 Transactional data structure are
 
+Concurrency is rampant in today's programming society and we are quickly adapting all serial data structures into concurrent data structures to actually benefit from our ever increasing core count of our CPU's. This now leads into our topic which covers two important and well known data structures, which are Binary Search Trees (BST) and Adelson-Velskii and Landis Trees (AVL). A Binary Search Tree is a node-based data structure that has a root that is the top of the tree and has two subtrees, which are the left and right subtree. The left subtree contains all nodes smaller than the current nodes key and the right subtree contains all nodes with keys greater than the current nodes key. An AVL Search tree is a modified BST, but now we also keep track of heights of all nodes, so that the left and right subtree height don't differ by more than one. If the differences between the two subtrees are greater than one then we rebalance the trees to keep the heights within that range to speed up our search time. The two trees must maintain two rules for our concurrent implementation, the first rule is that it cannot contain duplicates and the second rule is that it has to follow the standard BST/AVL structural layout.
+	A potential problem is presented when implementing certain methods concurrently. Some questions that are brought up would be when to lock, the locking order and how can we implement a contains that is exceptionally fast and lightweight, since contains is typically called the most out of any method. Even with all this in mind the main question that hasn't been asked is now being answered, which is how do we generalize an implementation such that it can be applicable to any search tree and not just create specialized solutions [1]? The answer to such a practical search tree is one that introduces a condition for path traversal validation, such that it is applicable to any tree. The condition determines whether or not our key is in the tree by looking at the succinct path snapshot (SPS) and the traversal only needs to take a path limited by our succinct path snapshot. If the key is contained in one of the snapshots then the condition states that the key is in the tree otherwise it states that it does not exist in the tree.  Also, our snapshots will get modified if there are any changes or mutations to the tree or along a path. Using this idea of succinct path snapshots we can also extend it and create a lock-free implementation of contains since it now has a method to verify if our path has been modified without the need to traverse the tree again. This contains however, will traverse again if the verification method fails and because of this it cannot be wait-free since it could fail an indefinite amount of times (Sec 3).
+	Our path condition also makes it possible to extend our implementation to allow for customized operations, such as rotations, without having to complicate our program any further. This will prove to be incredibly useful because one of our goals is to recreate our program to be a transactional data structure. A transactional data structure focuses on atomicity and on isolation to ensure that each action takes effect in sequential order.
 
 \section{Research}
 
@@ -54,6 +54,18 @@ The research in this area, so compare to other papers?
 
 \section{Implementation}
 In this section we will be going over what each function does and describe the linearization points of each function (excluding TraverseNLock). We will also mention progress guarantee, correctness condition and synchronization techniques (NOTE: Maybe move this technique idea to design). The functions to be described are Contains(), Insert(), Remove(), UpdateSnaps() and TraverseNLock(). We will also describe how we initialize our tree and our sentinel nodes. Important note is that every node has an atomic mark designating whether or not it has been logically removed.
+\subsection{Tree and Nodes}
+Our tree implementation is very familiar if one has seen a standard BST tree, since items less than the current key go down the left path and items greater than the current node go on the right path, but one core idea that our tree follows is that we can only add nodes at the end of the tree and not in between two nodes. We can still remove nodes anywhere in the tree and in one scenario we will actually swap nodes, but for more information on that check the Remove() section. Our tree is initialized to have two sentinel nodes to handle edge cases and the first item we insert will become the root. Our nodes implementation for our concurrent method is different then what we had for our serialized implementation and it will look like this :
+\begin{enumerate}
+\item T Key
+\item Node* Predecessor (Pred and Succ are for succinct snapshots)
+\item Node* Successor
+\item Node* LeftChild
+\item Node* RightChild
+\item Node* Parent
+\item Height (For AVL)
+\end{enumerate}
+We must also keep track of our parent so that we can traverse up the tree when doing certain methods and to help maintain our locking-order, discussed in design decisions.
 \subsection{Snapshots}
 Snapshots are an integral part of our design because it will guarantee that our contains will not miss any elements that have been moved since it has started. We implemented it by having each node contain a succinct snapshot that contains itself and its successor or predecessor[2(Power Point Slides One)]. This will create an implicit list of nodes with keys in ascending order, note that it isn't linked so we cannot traverse through that list with our contains. We do not search through this linked list, but if the item is not within that list then we can say that it does not exist.
 \subsection{UpdateSnaps}
@@ -68,12 +80,23 @@ The UpdateSnaps() function called by Insert() or Remove() to update the succinct
 The Contains() function that we have developed has to be lock-free or there was no point in recreating this paper, so when we develop it we can only use compare-and-swaps. Knowing this we have developed it to at most only use one compare-and-swap, which will be used if we do not find the item. Our contains will have two scenarios happen, either the item has been found when we traverse from the root with our key or we have reached a leaf and cannot find the item.
 Our implementation has a lock-free contains and a deadlock-free insert and removes. Our contains() is lock-free because it only uses compare-and-swap, which has a consensus number of infinity, so by only using that atomic operation in that function we can say that even if it fails at least one other operation managed to succeed. If we find our item/key at a node in the list then we check if has been logically removed with a marking on that node and if it not marked then we return true otherwise we restart. This trait proves that this implementation is not starvation-free so it is not wait-free as well. If Contains() could not find the item/key then it reads the succinct snapshot of the node and checks whether or not it is contained in that snapshot. If it is then that means the node has been swapped out and it will restart to find it otherwise we return false.
 \subsection{TraverseNLock}
-TraverseNLock() will lock the node we are trying to find or a leaf in the tree if we didn't find it. Our implementation is identical to Contains() except that it contains locks and returns our node that is now locked instead of a boolean. There are two possible places that we lock, the first being right after we check the marking of our item/key if we found it. The second possible place to lock our node is right before reading the succinct path snapshot to guarantee, which will guarantee that no contaminated data in the set if we do it here.
+TraverseNLock() will lock the node we are trying to find or a leaf in the tree, if we didn't find our key. Our implementation is identical to Contains() except that it contains locks and returns our node that is now locked instead of a boolean. There are two possible places that we lock, the first being right after we check the marking of our item/key if we found it. The second possible place to lock our node is right before reading the succinct path snapshot to guarantee, which will guarantee that no contaminated data in the set if we do it here.
+\subsection{Insert}
+A concurrent insert is very similar to a sequential insert with the only difference being that we need to update our snapshots. Our insert first starts by taking in a key and uses TraverseNLock, which returns a node that we locked, to find out where our key belongs. If this node is our key then we unlock the node and return false since we do not allow for duplicates. If we didn't find our key then the node locked will be our parent and we will create a node that contains our key. We then set the parent point of the newly created node to our locked parent node. We then set our parent nodes left or right node pointer, depending on whether or not our key is less than or greater than our parents key, to our newly created node. Then we update the snapshots of our newly created node, unlock our parent node and finally returns true.
+\subsection{Remove}
+A concurrent remove will take in a key k to remove from our tree and if it returns false otherwise it returns true. First remove will find and lock the node containing our key using TraverseNLock. If we didn't find the node containing our key then we return false.Then it follows one of three scenarios
+\begin{enumerate}
+\item If the locked node has one child then we first mark the node as removed, which is the linearization point, then we update our snaps, unlock all the nodes it locked and returns true.
+\item If the locked node has two children and our right child has no left child then first mark the locked node as removed. Then we set our parents right node to be our right child and our right child will point to our left child, then we update snaps, unlock all the nodes it locked and returns true.
+\item If the locked node has two children and our right child has a left child, we first mark our node for removal. Then we have to traverse through the tree and attempt to lock our successor, which restarts when it fails. If we successfully lock our successor then we lock the successors parent to change its left pointer to the successors right child, if it has one. We then swap our successor and locked node, update snaps, unlock all the nodes it locked and returns true.
+\end{enumerate}  
 \section{Design Decisions}
 
-TALK ABOUT HOW WE DIDN'T USE A LIST FOR SNAPSHOTS AND HOW DAMN CONFUSING IT WAS BECAUSE OF THE ORIGINAL AUTHORS USING A LIST
+ locking-order
 
-TALK ABOUT WHY WE LOCK BEFORE THE READ
+%TALK ABOUT HOW WE DIDN'T USE A LIST FOR SNAPSHOTS
+
+%TALK ABOUT WHY WE LOCK BEFORE THE READ
 
 Locking Order as well
 
@@ -93,7 +116,6 @@ We try to keep consistency with the original implementation with our experiments
 	\item 0\% contains, 50\% inserts, 10\% removes
 \end{enumerate}
 
-
 \subsection{Results}
 
 Results go here and compare what we got to what they got
@@ -106,9 +128,14 @@ Also put 9 graphs up for each distribution of operations and transaction size
 	\item Concurrency
 	\item Logical ordering information
 	\item Binary Search Tree
+	\item AVL Tree
 	\item Transactional Data Structure
 	\item Software Transactional Memory
 	\item Snapshots
+	\item Succinct Path Snapshots
+	\item HyperThreading
+	\item Atomicity 
+	\item Isolation
 \end{itemize}
 
 \section*{Acknowledgment}
