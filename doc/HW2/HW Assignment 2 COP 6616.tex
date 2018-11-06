@@ -1,0 +1,208 @@
+\documentclass{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\definecolor{mGreen}{rgb}{0,0.6,0}
+\definecolor{mGray}{rgb}{0.5,0.5,0.5}
+\definecolor{mPurple}{rgb}{0.58,0,0.82}
+\definecolor{backgroundColour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{CStyle}{
+    backgroundcolor=\color{backgroundColour},   
+    commentstyle=\color{mGreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{mGray},
+    stringstyle=\color{mPurple},
+    basicstyle=\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    language=C
+}
+
+
+\author{Robert Bland and Tyler Townsend\\ Two Cool Guys}
+
+\title{Homework Assignment 2}
+
+\begin{document}
+
+\maketitle
+
+\section{Tower Probe Race condition} 
+
+\subsection{Problem}
+The tower\_probe function has a security vulnerability. This is vulnerability is exposed when a write operation happens concurrently with a tower\_delete, which is called and derefences a pointer that will be used later with the write operation. This scenario is a race condition and has to be set up in a distinct series of operations discussed in the next subsection.  One requirement is to delay the control message sent in the probe function in legousbtower.c. This is done between the registering of the interface and the reading of the boards firmware ID. Another requirement for this vulnerability is that the 0 address must be mappable on the machine. This allows it to be possible to create a local privilege escalation exploit using a write-what-where condition. This exploit is caused by a remapping of the dev-interrupt\_out\_buffer in tower\_write operation that was called via a NULL dereference. This means that is now possible to run any malicious scripts from that USB on the computer. 
+
+\subsection{Exact Location and Execution of Problem}
+One thing to note before we start assumptions is that not all of the code for tower\_probe is shown below, but it's enough to show the problem at hand. Now we will assume that we have tampered the USB's firmware ID to throw an error later and that we will run a write operation concurrently later as well. We execute tower\_probe until we finish registering our USB device on line 22. Then we delay the thread that is running the probe function before it reaches line 25. Then the write operation mentioned earlier will initiate a write to the device file. We stop stalling tower\_probe and line 25 will throw an error because of the ID and call Tower\_delete. This does not stop the execution of this write operation and tower\_delete will free dev->interrupt\_out\_urb on line 7. Now the write operation will throw a NULL derefence at line 6 and 18 and will remap dev->interrupt\_out\_urb to 0. This now is a write-what-where condition and creates a local privilege escalation exploit which then allows us to run any malicious code.
+\begin{lstlisting}[style=CStyle]
+@@ -886,24 +886,6 @@ static int tower_probe (struct usb_interface *interface, const struct usb_device
+...
+ 	dev->interrupt_in_interval = interrupt_in_interval ? interrupt_in_interval : dev->interrupt_in_endpoint->bInterval;
+ 	dev->interrupt_out_interval = interrupt_out_interval ? interrupt_out_interval : dev->interrupt_out_endpoint->bInterval;
+ 
+	/* we can register the device now, as it is ready */
+	usb_set_intfdata (interface, dev);
+
+	retval = usb_register_dev (interface, &tower_class);
+
+	if (retval) {
+		/* something prevented us from registering this driver */
+		dev_err(idev, "Not able to get a minor for this device.\n");
+		usb_set_intfdata (interface, NULL);
+		goto error;
+	}
+	dev->minor = interface->minor;
+
+	/* let the user know what node this device is now attached to */
+	dev_info(&interface->dev, "LEGO USB Tower #%d now attached to major "
+		 "%d minor %d\n", (dev->minor - LEGO_USB_TOWER_MINOR_BASE),
+		 USB_MAJOR, dev->minor);
+
+ 	/* get the firmware version and log it */
+ 	result = usb_control_msg (udev,
+ 				  usb_rcvctrlpipe(udev, 0),
+@@ -924,6 +906,23 @@ static int tower_probe (struct usb_interface *interface, const struct usb_device
+ 		 get_version_reply.minor,
+ 		 le16_to_cpu(get_version_reply.build_no));
+ 
+ exit:
+ 	return retval;
+\end{lstlisting}
+\begin{lstlisting}[style=CStyle]
+static inline void tower_delete (struct lego_usb_tower *dev)
+{
+	tower_abort_transfers (dev);
+
+	/* free data structures */
+	usb_free_urb(dev->interrupt_in_urb);
+	usb_free_urb(dev->interrupt_out_urb);
+	kfree (dev->read_buffer);
+	kfree (dev->interrupt_in_buffer);
+	kfree (dev->interrupt_out_buffer);
+	kfree (dev);
+}
+\end{lstlisting}
+\begin{lstlisting}[style=CStyle]
+static ssize_t tower_write	(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
+{
+	...
+	
+	/* send off the urb */
+	usb_fill_int_urb(dev->interrupt_out_urb,
+			 dev->udev,
+			 usb_sndintpipe(dev->udev, dev->interrupt_out_endpoint->bEndpointAddress),
+			 dev->interrupt_out_buffer,
+			 bytes_to_write,
+			 tower_interrupt_out_callback,
+			 dev,
+			 dev->interrupt_out_interval);
+
+	dev->interrupt_out_busy = 1;
+	wmb();
+
+	retval = usb_submit_urb (dev->interrupt_out_urb, GFP_KERNEL);
+	if (retval) {
+		dev->interrupt_out_busy = 0;
+		dev_err(&dev->udev->dev,
+			"Couldn't submit interrupt_out_urb %d\n", retval);
+		goto unlock_exit;
+	}	
+	
+	...
+	unlock_exit:
+	/* unlock the device */
+	mutex_unlock(&dev->lock);
+
+exit:
+	return retval;
+}
+}
+\end{lstlisting}
+
+\subsection{Solution}
+The solution is surprisingly simple since it only requires us to change where we register the USB interface[3]. Normally the program registers the USB interface then checks the firmware ID, but in the solution we move the code for registering the USB after we check the firmware ID. This makes it impossible for a user to use the USB and do a write operation before confirming the ID, thus eliminating the race-condition. As shown in the code below, the lines with the negative symbols are the lines we delete and the lines with the plus symbols are the ones where we add to the code and it is a simple cut and paste.
+\begin{lstlisting}[style=CStyle]
+@@ -886,24 +886,6 @@ static int tower_probe (struct usb_interface *interface, const struct usb_device
+...
+ 	dev->interrupt_in_interval = interrupt_in_interval ? interrupt_in_interval : dev->interrupt_in_endpoint->bInterval;
+ 	dev->interrupt_out_interval = interrupt_out_interval ? interrupt_out_interval : dev->interrupt_out_endpoint->bInterval;
+ 
+-	/* we can register the device now, as it is ready */
+-	usb_set_intfdata (interface, dev);
+-
+-	retval = usb_register_dev (interface, &tower_class);
+-
+-	if (retval) {
+-		/* something prevented us from registering this driver */
+-		dev_err(idev, "Not able to get a minor for this device.\n");
+-		usb_set_intfdata (interface, NULL);
+-		goto error;
+-	}
+-	dev->minor = interface->minor;
+-
+-	/* let the user know what node this device is now attached to */
+-	dev_info(&interface->dev, "LEGO USB Tower #%d now attached to major "
+-		 "%d minor %d\n", (dev->minor - LEGO_USB_TOWER_MINOR_BASE),
+-		 USB_MAJOR, dev->minor);
+-
+ 	/* get the firmware version and log it */
+ 	result = usb_control_msg (udev,
+ 				  usb_rcvctrlpipe(udev, 0),
+@@ -924,6 +906,23 @@ static int tower_probe (struct usb_interface *interface, const struct usb_device
+ 		 get_version_reply.minor,
+ 		 le16_to_cpu(get_version_reply.build_no));
+ 
++	/* we can register the device now, as it is ready */
++	usb_set_intfdata (interface, dev);
++
++	retval = usb_register_dev (interface, &tower_class);
++
++	if (retval) {
++		/* something prevented us from registering this driver */
++		dev_err(idev, "Not able to get a minor for this device.\n");
++		usb_set_intfdata (interface, NULL);
++		goto error;
++	}
++	dev->minor = interface->minor;
++
++	/* let the user know what node this device is now attached to */
++	dev_info(&interface->dev, "LEGO USB Tower #%d now attached to major "
++		 "%d minor %d\n", (dev->minor - LEGO_USB_TOWER_MINOR_BASE),
++		 USB_MAJOR, dev->minor);
+ 
+ exit:
+ 	return retval;
+\end{lstlisting}
+
+\subsection{Concurrency}
+This is related to concurrency since this problem only exists since we can do a read/write operation while the program is registering the USB and checking the board firmware ID. If this was executed in a sequential manner then delaying the probe function would be pointless since it will not be able to execute anything else until this delay is done. Which will eventually throw an error and cause the queued write operation to never happen since the device will be unregistered before it can write. This portrays just how serious race conditions are in a concurrent environment and how small changes or certain conditions can allow attackers to run malicious code. These conditions are very spread out and hard to find, but can exist for over a decade before it even gets patched out. This is pretty terrifying knowing that concurrent programs can have unexpected outcomes that lead to more than just mismatched data and incorrect sequential outcomes, since this outcome let the attacker do anything they want. Preventive measures for this scenario would have been to reconsider the ordering of registering a device and checking it's firmware. Clearly if we have an operation that can nullify the work done in the previous lines of code, then it would be more optimal to check that scenario first then to continue with the rest of the program.
+
+\subsection{Existence}
+This vulnerability has existed since 2003 and just recently got patched in March 2018, although this did have solutions readily available last year with a simple change in structure[3]. The versions it ranges from version 2.6.12.1 up to 4.8.11 and exists on Redhat Enterprise Linux version 5 \& version 6[1]. The severity of this problem was listed as a 6.9 since the requirements to do it needed the person to physically plug it in, but if they managed to do this then they could run any script using that USB\cite{NVD}.
+
+\begin{thebibliography}{9}
+\bibitem{NVD}
+	https://nvd.nist.gov/vuln/detail/CVE-2017-15102
+\bibitem{Code}
+	Tower\_write and tower\_delete take from\\ 
+	https://github.com/torvalds/linux/blob/master/drivers/usb/misc/legousbtower.c
+\bibitem{Fix}
+	Solution taken from\\
+	https://github.com/torvalds/linux/\\commit/2fae9e5a7babada041e2e161699ade2447a01989
+\end{thebibliography}
+
+\end{document}
+
