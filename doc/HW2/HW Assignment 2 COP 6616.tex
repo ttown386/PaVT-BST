@@ -1,4 +1,8 @@
-\documentclass{article}
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx, float}
+\usepackage{mathtools}
+\usepackage{listings}
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -32,7 +36,7 @@
 }
 
 
-\author{Robert Bland and Tyler Townsend\\ Two Cool Guys}
+\author{Robert Bland and Tyler Townsend}
 
 \title{Homework Assignment 2}
 
@@ -40,10 +44,13 @@
 
 \maketitle
 
-\section{Tower Probe Race condition} 
+\section{Tower Probe Race condition: CVE-2017-15102} 
 
 \subsection{Problem}
 The tower\_probe function has a security vulnerability. This is vulnerability is exposed when a write operation happens concurrently with a tower\_delete, which is called and derefences a pointer that will be used later with the write operation. This scenario is a race condition and has to be set up in a distinct series of operations discussed in the next subsection.  One requirement is to delay the control message sent in the probe function in legousbtower.c. This is done between the registering of the interface and the reading of the boards firmware ID. Another requirement for this vulnerability is that the 0 address must be mappable on the machine. This allows it to be possible to create a local privilege escalation exploit using a write-what-where condition. This exploit is caused by a remapping of the dev-interrupt\_out\_buffer in tower\_write operation that was called via a NULL dereference. This means that is now possible to run any malicious scripts from that USB on the computer. 
+
+\subsection{Existence}
+This vulnerability has existed since 2003 and just recently got patched in March 2018, although this did have solutions readily available last year with a simple change in structure[3]. The versions it ranges from version 2.6.12.1 up to 4.8.11 and exists on Redhat Enterprise Linux version 5 \& version 6[1]. The severity of this problem was listed as a 6.9 since the requirements to do it needed the person to physically plug it in, but if they managed to do this then they could run any script using that USB\cite{NVD}.
 
 \subsection{Exact Location and Execution of Problem}
 One thing to note before we start assumptions is that not all of the code for tower\_probe is shown below, but it's enough to show the problem at hand. Now we will assume that we have tampered the USB's firmware ID to throw an error later and that we will run a write operation concurrently later as well. We execute tower\_probe until we finish registering our USB device on line 22. Then we delay the thread that is running the probe function before it reaches line 25. Then the write operation mentioned earlier will initiate a write to the device file. We stop stalling tower\_probe and line 25 will throw an error because of the ID and call Tower\_delete. This does not stop the execution of this write operation and tower\_delete will free dev->interrupt\_out\_urb on line 7. Now the write operation will throw a NULL derefence at line 6 and 18 and will remap dev->interrupt\_out\_urb to 0. This now is a write-what-where condition and creates a local privilege escalation exploit which then allows us to run any malicious code.
@@ -81,6 +88,9 @@ One thing to note before we start assumptions is that not all of the code for to
  exit:
  	return retval;
 \end{lstlisting}
+\centerline{\textbf{Figure 1.1: \texttt{tower\_probe()}}}
+\vspace{12pt}
+
 \begin{lstlisting}[style=CStyle]
 static inline void tower_delete (struct lego_usb_tower *dev)
 {
@@ -95,6 +105,9 @@ static inline void tower_delete (struct lego_usb_tower *dev)
 	kfree (dev);
 }
 \end{lstlisting}
+\centerline{\textbf{Figure 1.2: \texttt{tower\_delete()}}}
+\vspace{12pt}
+
 \begin{lstlisting}[style=CStyle]
 static ssize_t tower_write	(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
@@ -131,9 +144,11 @@ exit:
 }
 }
 \end{lstlisting}
+\centerline{\textbf{Figure 1.3: \texttt{tower\_write()}}}
+\vspace{12pt}
 
 \subsection{Solution}
-The solution is surprisingly simple since it only requires us to change where we register the USB interface[3]. Normally the program registers the USB interface then checks the firmware ID, but in the solution we move the code for registering the USB after we check the firmware ID. This makes it impossible for a user to use the USB and do a write operation before confirming the ID, thus eliminating the race-condition. As shown in the code below, the lines with the negative symbols are the lines we delete and the lines with the plus symbols are the ones where we add to the code and it is a simple cut and paste.
+The solution is surprisingly simple since it only requires us to change where we register the USB interface[3]. Normally the program registers the USB interface then checks the firmware ID, but in the solution we move the code for registering the USB after we check the firmware ID. This makes it impossible for a user to use the USB and do a write operation before confirming the ID, thus eliminating the race-condition. As shown in the code below, the lines with the negative symbols are the lines we delete and the lines with the plus symbols are the ones where we add to the code and it is a simple cut and paste. The $+$ indicate added lines and the $-$ indicate removed lines.
 \begin{lstlisting}[style=CStyle]
 @@ -886,24 +886,6 @@ static int tower_probe (struct usb_interface *interface, const struct usb_device
 ...
@@ -186,12 +201,139 @@ The solution is surprisingly simple since it only requires us to change where we
  exit:
  	return retval;
 \end{lstlisting}
+\centerline{\textbf{Figure 1.4: Solution to \texttt{tower\_probe()}}}
+\vspace{12pt}
 
 \subsection{Concurrency}
 This is related to concurrency since this problem only exists since we can do a read/write operation while the program is registering the USB and checking the board firmware ID. If this was executed in a sequential manner then delaying the probe function would be pointless since it will not be able to execute anything else until this delay is done. Which will eventually throw an error and cause the queued write operation to never happen since the device will be unregistered before it can write. This portrays just how serious race conditions are in a concurrent environment and how small changes or certain conditions can allow attackers to run malicious code. These conditions are very spread out and hard to find, but can exist for over a decade before it even gets patched out. This is pretty terrifying knowing that concurrent programs can have unexpected outcomes that lead to more than just mismatched data and incorrect sequential outcomes, since this outcome let the attacker do anything they want. Preventive measures for this scenario would have been to reconsider the ordering of registering a device and checking it's firmware. Clearly if we have an operation that can nullify the work done in the previous lines of code, then it would be more optimal to check that scenario first then to continue with the rest of the program.
 
-\subsection{Existence}
-This vulnerability has existed since 2003 and just recently got patched in March 2018, although this did have solutions readily available last year with a simple change in structure[3]. The versions it ranges from version 2.6.12.1 up to 4.8.11 and exists on Redhat Enterprise Linux version 5 \& version 6[1]. The severity of this problem was listed as a 6.9 since the requirements to do it needed the person to physically plug it in, but if they managed to do this then they could run any script using that USB\cite{NVD}.
+
+\section{Driver\_override: CVE-2017-12146}
+\subsection{Problem Description}
+The vulnerability of the driver\_override implementation in drivers/base/platform.c in the Linux kernel (before 4.12.1) is susceptible to race condition when different threads are reading vs storing a different driver override \cite{bugzilla}. The race condition allows local users to gain elevated privileges by leveraging the race condition. A local attacker could use this t o possibly gain administrative privileges\cite{ubuntu-security}.
+
+\subsection{History}
+The weakness was released 09/08/2017 and traded as CVE-2017-12146 since 08/01/2017. The attack needs to be approached locally, and successful exploitation needs a single authentication. With known technical details, no exploit is available\cite{vuldb}. A possible race condition occurs between driver\_override\_store() and driver\_override\_show().
+
+The driver\_override patch was a result to allow the driver for a device to be specified which would override standard OF, ACPI, ID table and name matching. When specified, if a driver has a name matching the driver\_override, the driver will have an opportunity to bind to the device which is specified by a writing a string to the driver\_override file. This is done in the \texttt{driver\_override\_store()} function as seen in figure 2.1. To note, any device that is represent as platform device(i.e \texttt{struct platform\_device}) allows them to connect to a virtual "platform bus" that allows the kernel to communicate with devices via a specified driver that are not necessarily ``plug and play'' \cite{sourcecode}.
+
+
+The current driver will not automatically unbind from the device from writing to driver\_override nor make any attempt to automatically load the specified driver.  If no driver with a matching name is currently loaded in the kernel, the device will not bind to any driver.  This also allows devices to opt-out of driver binding using a driver\_override name such as "none".
+
+Platform devices have long been used in this role in the kernel. 
+So now we have a driver for a platform device, but no actual devices yet. As we noted at the beginning, platform devices are inherently not discoverable so there must be a another way to tell the kernel about their existence. That is typically done with the creation of a static \texttt{platform\_device} structure providing, at a minimum, a name which is used to find the associated driver. The platform.c file provides a platform 'pseudo' bus for legacy devices\cite{sourcecode} (i.e. for devices that are not ``plug and play'').
+%
+%If an ID table is present, the platform bus code will scan through it every time it has to find a driver for a new platform device. If the device's name matches the name in an ID table entry, the device will be given to the driver for management; a pointer to the matching ID table entry will be made available to the driver as well. Platform drivers make them selves known to the kernel with \texttt{int platform\_driver\_register(struct platform\_driver *driver)}
+
+
+\subsection{Exact Location and Execution of Problem}
+The problem occurs due to shared memory between two threads, one which can be calling a store() and the other a show(). In Figure 2.1 The race condition occurs from calling \texttt{pdev->driver\_override} on lines 19 to 24. Show() requires access to the same data at lines 4 - 6 in Figure 2.2. If \texttt{sprintf()} does not finish writing to \texttt{buf} before the memory storing \texttt{pdev->driver\_override} is freed, this will cause corruption.
+
+Suppose there are two threads $T_1$, and $T_2$ are performing a store(), show() operation, respectively. Thread $T_1$ reads \texttt{old=pdev->driver\_override}. Then $T_2$ calls \texttt{sprintf(buf, "\%s\textbackslash n", pdev->driver\_override)}. When \texttt{sprintf()} starts reading from \texttt{pdev->driver\_override}, Thread $T_1$ executes \texttt{pdev->driver\_override = driver\_override} followed by kfree(old) corrupting thread $T_2$'s execution. 
+
+Similarly, there could be a data race between multiple threads performing a store() where memory leaks are possible\cite{loreKernel}. 
+\begin{lstlisting}[style=CStyle]
+static ssize_t driver_override_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	char *driver_override, *old = pdev->driver_override, *cp;
+
+	if (count > PATH_MAX)
+		return -EINVAL;
+
+	driver_override = kstrndup(buf, count, GFP_KERNEL);
+	if (!driver_override)
+		return -ENOMEM;
+
+	cp = strchr(driver_override, '\n');
+	if (cp)
+		*cp = '\0';
+
+	if (strlen(driver_override)) {
+		pdev->driver_override = driver_override;
+	} else {
+		kfree(driver_override);
+		pdev->driver_override = NULL;
+	}
+
+	kfree(old);
+
+	return count;
+}
+\end{lstlisting}
+\centerline{\textbf{Figure 2.1: \texttt{driver\_override\_store()}}}
+\vspace{12pt}
+
+\begin{lstlisting}[style=CStyle]
+static ssize_t driver_override_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	return sprintf(buf, "%s\n", pdev->driver_override);
+}
+\end{lstlisting}
+\centerline{\textbf{Figure 2.2: \texttt{driver\_override\_show()}}}
+\vspace{12pt}
+
+\subsection{Solution}
+The solution requires adding a lock to avoid race condition. The lock tries to protect against a race between store and show. In Figure 2.3, the first change is made to set \texttt{old=pdev->driver\_override} before modifying \texttt{pdev->driver\_override}. To provide atomicity, the device , \texttt{dev}, from which \texttt{pdev} was called is locked. Therefore, this will provide a means of mutual exclusion. The threads then finish and unlock as seen in lines 5 and 13.
+
+%\begin{lstlisting}[style=CStyle]
+%
+%static ssize_t driver_override_store(struct device *dev,
+% 				     const char *buf, size_t count)
+% {
+% 	struct platform_device *pdev = to_platform_device(dev);
+%-	char *driver_override, *old = pdev->driver_override, *cp;
+%+	char *driver_override, *old, *cp;
+% 
+% 	if (count > PATH_MAX)
+% 		return -EINVAL;
+%\end{lstlisting}
+
+\begin{lstlisting}[style=CStyle]
+static ssize_t driver_override_store(struct device *dev,
+ 	if (cp)
+ 		*cp = '\0';
+ 
++	device_lock(dev);
++	old = pdev->driver_override;
+ 	if (strlen(driver_override)) {
+ 		pdev->driver_override = driver_override;
+ 	} else {
+ 		kfree(driver_override);
+ 		pdev->driver_override = NULL;
+ 	}
++	device_unlock(dev);
+ 
+ 	kfree(old);
+\end{lstlisting}
+\centerline{\textbf{Figure 2.3: Solution to \texttt{driver\_override\_store()}}}
+\vspace{12pt}
+
+To safeguard show(), the same method is taken and a lock is used as seen in Figure 2.4. The lock prevents an interrupt during the execution of \texttt{sprintf()}. Therefore, only one thread may be able to read and write to the device's driver\_override.
+\begin{lstlisting}[style=CStyle]
+static ssize_t driver_override_show(struct device *dev,
+ 				    struct device_attribute *attr, char *buf)
+{
+ 	struct platform_device *pdev = to_platform_device(dev);
++	ssize_t len;
+ 
+-	return sprintf(buf, "%s\n", pdev->driver_override);
++	device_lock(dev);
++	len = sprintf(buf, "%s\n", pdev->driver_override);
++	device_unlock(dev);
++	return len;
+}
+\end{lstlisting}
+\centerline{\textbf{Figure 2.4: Solution to \texttt{driver\_override\_show()}}}
+\vspace{12pt}
+
+\subsection{Concurrency and Synchronization}
+Due to the lock used on the device, this creates a bottleneck of contention for the lock if many threads are competing for it. These two function now have a sequential behavior and are no longer concurrent, which is most likely a good thing. However, the behavior is now linearizable and overlapping events are sequentially consistent and well defined. Because of the lock, there is no possibility of the memory pointed to by \texttt{pdev->driver\_override} changing while show() is writing to a buffer. Using the lock ensures that if the thread reading the \texttt{driver\_override} starts then it will atomically and will write whatever it expects. 
 
 \begin{thebibliography}{9}
 \bibitem{NVD}
@@ -202,6 +344,19 @@ This vulnerability has existed since 2003 and just recently got patched in March
 \bibitem{Fix}
 	Solution taken from\\
 	https://github.com/torvalds/linux/\\commit/2fae9e5a7babada041e2e161699ade2447a01989
+
+\bibitem{ubuntu-security} 
+https://people.canonical.com/~ubuntu-security/cve/2017/CVE-2017-12146.html
+\bibitem{bugzilla}
+https://bugzilla.redhat.com/show\_bug.cgi?id=CVE-2017-12146
+\bibitem{source-code}
+https://elixir.bootlin.com/linux/v4.12.14/source/drivers/base/platform.c
+\bibitem{vuldb}
+https://vuldb.com/?id.106296
+\bibitem{drivover}
+https://www.redhat.com/archives/libvir-list/2014-April/msg00382.html
+\bibitem{lorekernel}
+https://lore.kernel.org/patchwork/patch/783378/
 \end{thebibliography}
 
 \end{document}
