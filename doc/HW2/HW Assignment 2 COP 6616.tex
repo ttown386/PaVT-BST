@@ -210,28 +210,28 @@ This is related to concurrency since this problem only exists since we can do a 
 
 \section{Driver\_override: CVE-2017-12146}
 \subsection{Problem Description}
-The vulnerability of the driver\_override implementation in drivers/base/platform.c in the Linux kernel (before 4.12.1) is susceptible to race condition when different threads are reading vs storing a different driver override \cite{bugzilla}. The race condition allows local users to gain elevated privileges by leveraging the race condition. A local attacker could use this t o possibly gain administrative privileges\cite{ubuntu-security}.
+The vulnerability of the driver\_override implementation in drivers/base/platform.c in the Linux kernel (before 4.12.1) is susceptible to race condition when different threads are reading vs storing a different driver override \cite{bugzilla}. The race condition allows local users to gain elevated privileges by leveraging the race condition. A local attacker could use this to possibly gain administrative privileges\cite{ubuntu-security}.
 
 \subsection{History}
 The weakness was released 09/08/2017 and traded as CVE-2017-12146 since 08/01/2017. The attack needs to be approached locally, and successful exploitation needs a single authentication. With known technical details, no exploit is available\cite{vuldb}. A possible race condition occurs between driver\_override\_store() and driver\_override\_show().
 
-The driver\_override patch was a result to allow the driver for a device to be specified which would override standard OF, ACPI, ID table and name matching. When specified, if a driver has a name matching the driver\_override, the driver will have an opportunity to bind to the device which is specified by a writing a string to the driver\_override file. This is done in the \texttt{driver\_override\_store()} function as seen in figure 2.1. To note, any device that is represent as platform device(i.e \texttt{struct platform\_device}) allows them to connect to a virtual "platform bus" that allows the kernel to communicate with devices via a specified driver that are not necessarily ``plug and play'' \cite{sourcecode}.
+The driver\_override patch was a result to allow the driver for a device to be specified which would override standard OF, ACPI, ID table and name matching. When specified, if a driver has a name matching the driver\_override, the driver will have an opportunity to bind to the device which is specified by a writing a string to the driver\_override file. This is done in the \texttt{driver\_override\_store()} function as seen in figure 2.1. To note, any device that represents a platform device(i.e \texttt{struct platform\_device}) allows them to connect to a virtual "platform bus". This allows the kernel to communicate with devices via a specified driver that are not necessarily ``plug and play'' \cite{source-code}.
 
 
-The current driver will not automatically unbind from the device from writing to driver\_override nor make any attempt to automatically load the specified driver.  If no driver with a matching name is currently loaded in the kernel, the device will not bind to any driver.  This also allows devices to opt-out of driver binding using a driver\_override name such as "none".
+The current driver will not automatically unbind from the device from writing to driver\_override nor make any attempt to automatically load the specified driver.  If the new driver doesn't match the name that is currently loaded in the kernel, the device will not bind to any driver.  This also allows devices to opt-out of driver binding using a driver\_override name such as "none".
 
 Platform devices have long been used in this role in the kernel. 
-So now we have a driver for a platform device, but no actual devices yet. As we noted at the beginning, platform devices are inherently not discoverable so there must be a another way to tell the kernel about their existence. That is typically done with the creation of a static \texttt{platform\_device} structure providing, at a minimum, a name which is used to find the associated driver. The platform.c file provides a platform 'pseudo' bus for legacy devices\cite{sourcecode} (i.e. for devices that are not ``plug and play'').
+So now we have a driver for a platform device, but no actual devices yet. As we noted at the beginning, platform devices are inherently not discoverable, so there must be another way to tell the kernel about their existence. That is typically done with the creation of a static \texttt{platform\_device} structure providing, at a minimum, a name which is used to find the associated driver. The platform.c file provides a platform 'pseudo' bus for legacy devices\cite{source-code} (i.e. for devices that are not ``plug and play'').
 %
 %If an ID table is present, the platform bus code will scan through it every time it has to find a driver for a new platform device. If the device's name matches the name in an ID table entry, the device will be given to the driver for management; a pointer to the matching ID table entry will be made available to the driver as well. Platform drivers make them selves known to the kernel with \texttt{int platform\_driver\_register(struct platform\_driver *driver)}
 
 
 \subsection{Exact Location and Execution of Problem}
-The problem occurs due to shared memory between two threads, one which can be calling a store() and the other a show(). In Figure 2.1 The race condition occurs from calling \texttt{pdev->driver\_override} on lines 19 to 24. Show() requires access to the same data at lines 4 - 6 in Figure 2.2. If \texttt{sprintf()} does not finish writing to \texttt{buf} before the memory storing \texttt{pdev->driver\_override} is freed, this will cause corruption.
+The problem occurs due to shared memory between two threads, one which can be calling a store() and the other a show(). In Figure 2.1 the race condition occurs from calling \texttt{pdev->driver\_override} on lines 19 to 24. Show() requires access to the same data at lines 4 - 6 in Figure 2.2. If \texttt{sprintf()} does not finish writing to \texttt{buf} before the memory storing \texttt{pdev->driver\_override} is freed, this will cause corruption.
 
 Suppose there are two threads $T_1$, and $T_2$ are performing a store(), show() operation, respectively. Thread $T_1$ reads \texttt{old=pdev->driver\_override}. Then $T_2$ calls \texttt{sprintf(buf, "\%s\textbackslash n", pdev->driver\_override)}. When \texttt{sprintf()} starts reading from \texttt{pdev->driver\_override}, Thread $T_1$ executes \texttt{pdev->driver\_override = driver\_override} followed by kfree(old) corrupting thread $T_2$'s execution. 
 
-Similarly, there could be a data race between multiple threads performing a store() where memory leaks are possible\cite{loreKernel}. 
+Similarly, there could be a data race between multiple threads performing a store() where memory leaks are possible\cite{lorekernel}. 
 \begin{lstlisting}[style=CStyle]
 static ssize_t driver_override_store(struct device *dev,
 				     struct device_attribute *attr,
@@ -314,7 +314,7 @@ static ssize_t driver_override_store(struct device *dev,
 \centerline{\textbf{Figure 2.3: Solution to \texttt{driver\_override\_store()}}}
 \vspace{12pt}
 
-To safeguard show(), the same method is taken and a lock is used as seen in Figure 2.4. The lock prevents an interrupt during the execution of \texttt{sprintf()}. Therefore, only one thread may be able to read and write to the device's driver\_override.
+To safeguard show(), the same method is taken and a lock is used as seen in Figure 2.4. the lock prevents an interrupt during the execution of \texttt{sprintf()}. Therefore, only one thread may be able to read and write to the device's driver\_override.
 \begin{lstlisting}[style=CStyle]
 static ssize_t driver_override_show(struct device *dev,
  				    struct device_attribute *attr, char *buf)
@@ -333,7 +333,7 @@ static ssize_t driver_override_show(struct device *dev,
 \vspace{12pt}
 
 \subsection{Concurrency and Synchronization}
-Due to the lock used on the device, this creates a bottleneck of contention for the lock if many threads are competing for it. These two function now have a sequential behavior and are no longer concurrent, which is most likely a good thing. However, the behavior is now linearizable and overlapping events are sequentially consistent and well defined. Because of the lock, there is no possibility of the memory pointed to by \texttt{pdev->driver\_override} changing while show() is writing to a buffer. Using the lock ensures that if the thread reading the \texttt{driver\_override} starts then it will atomically and will write whatever it expects. 
+Due to the lock used on the device, this creates a bottleneck of contention for the lock if many threads are competing for it. These two function now have a sequential behavior and are no longer concurrent, which is most likely a good thing. However, the behavior is now linearizable and overlapping events are sequentially consistent and well defined. Because of the lock, there is no possibility of the memory pointed to \texttt{pdev->driver\_override} changing while show() is writing to a buffer. Using the lock ensures that if the thread reading the \texttt{driver\_override} starts then it will atomically write whatever it expects. 
 
 \begin{thebibliography}{9}
 \bibitem{NVD}
