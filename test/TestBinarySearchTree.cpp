@@ -39,6 +39,7 @@ void TestBinarySearchTree::SetUp() {
 }
 
 void TestBinarySearchTree::TearDown() {
+//  std::cout<<"teardown"<<std::endl;
   ;
 }
 
@@ -49,11 +50,14 @@ TEST_F(TestBinarySearchTree, BSTInsert) {
     bst.insert(i);
   }
 
+
   bool areEqual = true;
   std::list<int> inOrder = inOrderTraversal(bst);
   std::list<int>::iterator itInOrder=inOrder.begin();
   std::list<int>::iterator itListRange=listRange.begin();
   for (int i=0; i<inOrder.size(); i++) {
+    std::cout<<*itInOrder<<" \n";
+    std::cout<<*itListRange<<" \n";
     areEqual &= (*itInOrder == *itListRange);
     itInOrder++;
     itListRange++;
