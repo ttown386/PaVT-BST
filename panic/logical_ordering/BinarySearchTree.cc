@@ -2,34 +2,16 @@
 // Created by ttown on 9/30/2018.
 //
 
-#include "../../include/BinarySearchTree.h"
+#include "BinarySearchTree.h"
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <stack>
 
 const int MAXBF = 1;
 const int MINBF = -1;
 const int iMin = std::numeric_limits<int>::min();
 const int iMax = std::numeric_limits<int>::max();
-
-namespace utils {
-Node *findMin(Node *node);
-}
-
-Node* utils::findMin(Node *node) {
-  if(node->getLeft() == nullptr) {
-    node = node->getLeft();
-  }
-  while(node->getLeft()->getLeft() != nullptr) {
-    node = node->getLeft();
-  }
-  //If the node we are returning has items attached to it make sure to not trim those off
-  //We do so by setting our left node to their right node
-  if(node->getLeft()->getRight() != nullptr) {
-    node->setLeft(node->getLeft()->getRight());
-  }
-  return node->getLeft();
-}
 
 BinarySearchTree::BinarySearchTree(bool isAvl) {
   this->isAvl = isAvl;
@@ -37,6 +19,9 @@ BinarySearchTree::BinarySearchTree(bool isAvl) {
   Node *min = new Node(iMin);
   root->setLeft(min);
   min->setParent(root);
+  root->setParent(nullptr);
+  root->sentinel = true;
+  min->sentinel = true;
 }
 
 BinarySearchTree::~BinarySearchTree() {
@@ -110,12 +95,9 @@ void BinarySearchTree::insert(int const &data) {
 
   // update parent;
   Node *newNode = new Node(data);
-  newNode->setParent(curr);
-  newNode->setHeight(0);
 
-  // If the parent is larger than the child, set the left pointer
-  // of parent to be the new node
-  // traverse to next child
+  newNode->setParent(curr);
+
   bool parentIsLarger = data < curr->getData();
   if (parentIsLarger) {
     curr->setLeft(newNode);
@@ -151,52 +133,136 @@ void BinarySearchTree::remove(int const &data) {
     Node *leftChild = curr->getLeft();
     Node *rightChild = curr->getRight();
 
-    // Easy removal
+    /* A node with at most 1 child */
     if (leftChild==nullptr || rightChild==nullptr) {
+      
+      curr->mark = true;
+      
       Node *currChild = (leftChild==nullptr) ? rightChild : leftChild;
-      // TODO remove nullptr and incorperate sentinel node
-      if (parent!=nullptr && parent->getLeft()==curr) {
+      
+      if (parent->getLeft()==curr) {
         parent->setLeft(currChild);
-      } else if (parent!=nullptr ){
+      } else {
         parent->setRight(currChild);
       }
-      // Call update Snaps here instead of updating child's parent pointer
-      currChild->setParent(parent);
-      delete curr;
-      return;
-    } else {
-      // TODO this will be changed with the concurrent version
-      // Calls remove twice which will be redundant
-      Node *min = utils::findMin(rightChild);
-      // TODO remove nullptr and incorperate sentinel node
-      if (parent!=nullptr && parent->getLeft()==curr) {
-        parent->setLeft(min);
-      } else if (parent!=nullptr){
-        parent->setRight(min);
-      }
-      // Finish updating all pointers at old location
-      Node *minOldParent = min->getParent();
 
-      if (min!=rightChild) {
-        // we know minsOldParent is greater than it
-        minOldParent->setLeft(nullptr);
+      if (currChild!=nullptr)
+        currChild->setParent(parent);
 
-        rightChild->setParent(min);
-        leftChild->setParent(min);
+      // TODO: Update Snaps
+      
+      // TODO: Unlock all
 
-        min->setRight(rightChild);
-      }
-      // do this no matter what
-      min->setParent(parent);
-      min->setLeft(leftChild);
-      delete curr;
+      // delete curr;
       return;
     }
+
+    /* Node with where the right child's left node is null */
+    if (rightChild->getLeft() == nullptr) {
+      
+      curr->mark = true;
+
+      rightChild->setLeft(leftChild);
+      leftChild->setParent(rightChild);
+      rightChild->setParent(parent);
+
+      if (parent->getLeft()==curr) {
+        parent->setLeft(rightChild);
+      } else {
+        parent->setRight(rightChild);
+      }
+
+      // TODO: update snaps
+      
+      // TODO: Unlock all
+      
+      return;
+    }
+
+    // TODO this will be changed with the concurrent version
+    // Calls remove twice which will be redundant
+    Node *successor = traverse(rightChild, data);
+
+    /**
+     * if failed locking successor, release locks and restart
+     *
+     * try lock on successor parent
+     *
+     * try lock on successor right child
+     *
+     * if either fail restart
+     */
+
+    Node *successorParent = successor->getParent();
+    Node *successorRightChild = successor->getRight();
+
+    successor->setRight(rightChild);
+    rightChild->setParent(successor);
+
+    successor->setLeft(leftChild);
+    leftChild->setParent(successor);
+
+    successor->setParent(parent);
+
+    
+    if (parent->getLeft()==curr) {
+      parent->setLeft(successor);
+    } else {
+      parent->setRight(successor);
+    }
+
+    successorParent->setLeft(successorRightChild);
+
+    if (successorRightChild!=nullptr)
+      successorRightChild->setParent(successorParent);
+    
+    // Update Snaps
+
+    // Unlock All
+
+    // delete curr;
+    return;
   }
 }
 
 bool BinarySearchTree::contains(int const &data) {
-  return false;
+  bool restart = false;
+  while (true) {
+
+    Node *curr = root;
+    Node *parent = nullptr;
+
+    // traverse
+    while (curr != nullptr) {
+
+      // We have a duplicate
+      if (curr->getData() == data) {
+        if (curr->mark) {
+          restart = true;
+          break;
+        }
+        return true;
+      }
+
+      // update parent;
+      parent = curr;
+
+      // traverse to next child
+      bool parentIsLarger = data < parent->getData();
+      curr = (parentIsLarger ? curr->getLeft() : curr->getRight());
+    }
+
+    if (restart == true) {
+      restart = false;
+      continue;
+    }
+
+    // get snapshot
+
+    // check if key is valid for snapshot
+
+    return false;
+  }
 }
 
 void BinarySearchTree::updateHeights(Node *curr) {
@@ -205,7 +271,7 @@ void BinarySearchTree::updateHeights(Node *curr) {
   // other calls
   Node *temp = curr;
 
-  while (temp!=nullptr) {
+  while (!temp->sentinel) {
     // update height of the subtree rooted here
     Node *left = temp->getLeft();
     Node *right = temp->getRight();
@@ -359,4 +425,86 @@ void BinarySearchTree::rebalance(Node *node) {
   } else {
     root = node;
   }
+}
+
+/**
+ *
+ * UTILITY FUNCTIONS
+ * 
+ */
+
+void inOrderTraversal(BinarySearchTree &bst) {
+
+  std::stack<Node*> stack;
+
+  // TODO: bst should be a constant reference so as to not alter input
+  Node *curr = bst.getRoot();
+
+  while (!stack.empty() || curr!=nullptr) {
+
+    if (curr!=nullptr) {
+      stack.push(curr);
+      curr = curr->getLeft();
+    } else {
+      curr = stack.top();
+      stack.pop();
+      std::cout<<(curr->getData())<<" ";
+      curr = curr->getRight();
+    }
+  }
+  std::cout<<std::endl;
+}
+void preOrderTraversal(BinarySearchTree &bst) {
+
+  std::stack<Node*> stack;
+
+  Node *curr = bst.getRoot();
+  stack.push(curr);
+
+  while (!stack.empty()) {
+
+    curr=stack.top();
+    std::cout<<(curr->getData())<<" ";
+    stack.pop();
+
+    if (curr->getRight()) {
+      stack.push(curr->getRight());
+    }
+    if (curr->getLeft()) {
+      stack.push(curr->getLeft());
+    }
+  }
+  std::cout<<std::endl;
+}
+
+int main() {
+
+  BinarySearchTree bst;
+  const int balanced[7] =  {4, 2, 6, 1, 3, 5, 7};
+
+  for (int i=0; i<7; i++) {
+    bst.insert(balanced[i]);
+  }
+
+  preOrderTraversal(bst);
+  inOrderTraversal(bst);
+  std::cout<<bst.contains(6)<<std::endl;
+  std::cout<<bst.contains(24)<<std::endl;
+
+  bst.remove(6);
+  bst.remove(24);
+
+  preOrderTraversal(bst);
+  inOrderTraversal(bst);
+
+  BinarySearchTree bst2(true);
+
+  for (int i=0; i<10; i++) {
+    bst.insert(i);
+  }
+
+  preOrderTraversal(bst);
+  inOrderTraversal(bst);
+
+  return 0;
 }

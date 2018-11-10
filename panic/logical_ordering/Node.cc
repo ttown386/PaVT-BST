@@ -2,7 +2,7 @@
 // Created by tylertownsend on 9/20/18.
 //
 
-#include "../../include/Node.h"
+#include "Node.h"
 
 Node::Node(int const& data) {
   setData(data);
@@ -12,6 +12,7 @@ Node::Node(int const& data) {
   succ = pred = this;
   setHeight(0);
   mark = false;
+  sentinel = false;
 }
 
 Node::~Node() {
