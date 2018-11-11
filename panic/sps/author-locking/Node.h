@@ -18,14 +18,15 @@ class Node {
   std::mutex lock;
   bool mark;
   bool sentinel;
-  Node *pred;
-  Node *succ;
+  Node *leftSnap;
+  Node *rightSnap;
   Node(int const& data);
   ~Node();
   int getData();
   void setData(int const& data);
   int getHeight();
   void setHeight(int const& height);
+  Node *get(int field);
   Node* getLeft();
   Node* getRight();
   Node* getParent();

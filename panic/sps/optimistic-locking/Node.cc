@@ -9,7 +9,7 @@ Node::Node(int const& data) {
   setLeft(nullptr);
   setRight(nullptr);
   setParent(nullptr);
-  succ = pred = this;
+  leftSnap = rightSnap = this;
   setHeight(0);
   mark = false;
   sentinel = false;
@@ -22,6 +22,12 @@ Node::~Node() {
 
 int Node::getData() {
   return data;
+}
+
+Node *Node::get(int field) {
+  if (field==0) return this->getLeft();
+  if (field==1) return this->getRight();
+  if (field==2) return this;
 }
 
 void Node::setData(int const& data) {

@@ -17,6 +17,7 @@ class Node {
  public:
   std::mutex lock;
   bool mark;
+  bool sentinel;
   Node *pred;
   Node *succ;
   Node(int const& data);
