@@ -23,22 +23,22 @@ BinarySearchTree::BinarySearchTree(bool isAvl) {
   this->isAvl = isAvl;
 
   // Bounds
-  rightSentinel = new Node(iMin);
-  leftSentinel = new Node(iMax);
+  minSentinel = new Node(iMin);
+  maxSentinel = new Node(iMax);
 
   // tree structure
-  leftSentinel->setParent(rightSentinel);
-  rightSentinel->setRight(leftSentinel);
+  maxSentinel->setParent(minSentinel);
+  minSentinel->setRight(maxSentinel);
 
   // Snapshots
-  leftSentinel->leftSnap = rightSentinel;
-  rightSentinel->rightSnap = leftSentinel;
+  maxSentinel->leftSnap = minSentinel;
+  minSentinel->rightSnap = maxSentinel;
 
   // Sentinel Conditions
-  rightSentinel->sentinel = true;
-  leftSentinel->sentinel = true;
+  maxSentinel->sentinel = true;
+  minSentinel->sentinel = true;
 
-  this->root = leftSentinel;
+  this->root = maxSentinel;
 }
 
 BinarySearchTree::~BinarySearchTree() {
@@ -67,10 +67,10 @@ void BinarySearchTree::updateSnaps(Node *node) {
   int field = nextField(parent, node->getData());
 
   if (field == LEFT){
-    (parent->leftSnap)->rightSnap = node;
+    (parent->leftSnap).load()->rightSnap = node;
     parent->leftSnap = node;
   } else {
-    (parent->rightSnap)->leftSnap = node;
+    (parent->rightSnap).load()->leftSnap = node;
     parent->rightSnap = node;
   }
   
@@ -117,7 +117,7 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
     // grab snapshot
     // check if restart is needed
     bool goLeft = (data < curr->getData() ? true : false);
-    Node *snapShot = (goLeft? curr->leftSnap : curr->rightSnap);
+    Node *snapShot = (goLeft? curr->leftSnap.load() : curr->rightSnap.load());
     if (curr->mark || (goLeft && (data < snapShot->getData()))||
         (!goLeft &&(data > snapShot->getData()))) {
       curr->lock.unlock();
@@ -141,7 +141,7 @@ void BinarySearchTree::insert(int const &data) {
     }
     
     // No longer a leaf node
-    if (curr->getData()==data ||
+    if (
       (data > curr->getData() && curr->getRight()!=nullptr) ||
       (data < curr->getData() && curr->getLeft()!=nullptr)) {
 
@@ -155,11 +155,11 @@ void BinarySearchTree::insert(int const &data) {
     // Copy snaps from parent
     bool parentIsLarger = data < curr->getData();
     if (parentIsLarger) {
-      newNode->leftSnap = curr->leftSnap;
+      newNode->leftSnap = curr->leftSnap.load();
       newNode->rightSnap = curr;
     } else {
       newNode->leftSnap = curr;
-      newNode->rightSnap = curr->rightSnap;
+      newNode->rightSnap = curr->rightSnap.load();
     }
 
     // Update Snaps
@@ -210,8 +210,8 @@ void BinarySearchTree::remove(int const &data) {
     Node *leftChild = curr->getLeft();
     Node *rightChild = curr->getRight();
     if (leftChild== nullptr && rightChild == nullptr) {
-      maxSnapNode = curr->rightSnap;
-      minSnapNode = curr->leftSnap;
+      maxSnapNode = curr->rightSnap.load();
+      minSnapNode = curr->leftSnap.load();
       if (parentIsLarger) {
         parent->setLeft(nullptr);
         parent->leftSnap = minSnapNode;
@@ -231,8 +231,8 @@ void BinarySearchTree::remove(int const &data) {
 
     /* A node with at most 1 child */
     if (leftChild==nullptr || rightChild==nullptr) {
-      maxSnapNode = curr->rightSnap;
-      minSnapNode = curr->leftSnap;
+      maxSnapNode = curr->rightSnap.load();
+      minSnapNode = curr->leftSnap.load();
       bool hasRightChild = leftChild == nullptr;
       Node *snapshot =  (hasRightChild) ? maxSnapNode : minSnapNode;
       Node *currChild = (hasRightChild) ? rightChild : leftChild;
@@ -246,8 +246,8 @@ void BinarySearchTree::remove(int const &data) {
       }
 
       // if the snapshot has changed restart
-      if ((hasRightChild && snapshot!=curr->rightSnap) || 
-          (!hasRightChild && snapshot!=curr->leftSnap)) {
+      if ((hasRightChild && snapshot!=curr->rightSnap.load()) || 
+          (!hasRightChild && snapshot!=curr->leftSnap.load())) {
         if (lockedSnap) snapshot->lock.unlock(); // Released in reverse locking order
         currChild->lock.unlock();
         curr->lock.unlock();
@@ -278,8 +278,8 @@ void BinarySearchTree::remove(int const &data) {
       return;
     }
 
-    maxSnapNode = curr->rightSnap;
-    minSnapNode = curr->leftSnap;
+    maxSnapNode = curr->rightSnap.load();
+    minSnapNode = curr->leftSnap.load();
     minSnapNode->lock.lock();
 
     if (minSnapNode->rightSnap!=curr || minSnapNode->mark) {
@@ -338,8 +338,7 @@ void BinarySearchTree::remove(int const &data) {
       parent->lock.unlock();
       continue;
     }
-    // Just a sanity check
-    // if (maxSnapNode->getParent()!=sucessorParent) 
+    
     Node *successorRightSnapshot = successor->rightSnap;
     bool lockedSuccessorSnap = false;
     Node *successorRightChild = successor->getRight();
@@ -671,21 +670,68 @@ void printSnaps(BinarySearchTree bst) {
 
     Node *curr = q.front();
     q.pop();
-    std::cout<<curr->getData()<<": ("<<curr->leftSnap->getData()<<",";
-    std::cout<<curr->rightSnap->getData()<<")\n";
+    std::cout<<curr->getData()<<": ("<<curr->leftSnap.load()->getData()<<",";
+    std::cout<<curr->rightSnap.load()->getData()<<")\n";
     if (curr->getLeft()!=nullptr) q.push(curr->getLeft());
     if (curr->getRight()!=nullptr) q.push(curr->getRight());
   }
 }
 
+std::vector<Node *> init_list(int num) {
+  std::vector<Node *> vector;
+  for (int i=0; i<num; i++) {
+    Node *n = new Node(i);
+    vector.push_back(n);
+  }
+  return vector;
+}
+
+// // Routine for threads. Performs all ops
+// void routine_4(BinarySearchTree &bst, std::vector<node *> list, 
+//                int id, int n_threads, std::vector<int> ops) {
+
+//   std::mt19937_64 eng{std::random_device{}()};
+//   std::uniform_int_distribution<> dist{10, 100};
+
+//   int count = 0;
+//   int iter = id - 1;
+//   int select = 0;
+//   for (int i=0; i<ops.size(); i++) {
+//     if (ops.at(i)==0) {
+//       s.insert(list.at(iter));
+//       iter+=n_threads;
+//     } else if (ops.at(i) == 1) {
+//       s.pop();
+//     } else {
+//       s.size();
+//     }
+//   }
+// }
+
+// // initialize order of ops
+// std::vector<int> init_ops(int max, int insert, int remove, int contains) {
+//   std::vector<int> ops;
+//   for (int i=0; i<insert; i++) {
+//     ops.push_back(0);
+//   }
+//   for (int i=0; i<remove; i++) {
+//     ops.push_back(1);
+//   }
+//   for (int i=0; i<contains; i++) {
+//     ops.push_back(2);
+//   }
+//   auto rng = std::default_random_engine {};
+//   std::shuffle(std::begin(ops), std::end(ops), rng);
+//   return ops;
+// }
+
+/**
+ * Sequential Main
+ */
 int main() {
 
   BinarySearchTree bst;
-  // const int balanced[7] =  {4, 2, 6, 1, 3, 5, 7};
 
-  // for (int i=0; i<7; i++) {
-  //   bst.insert(balanced[i]);
-  // }
   bst.insert(7);
   bst.insert(3);
   bst.insert(12);
@@ -731,3 +777,43 @@ int main() {
   printf("\n");
   return 0;
 }
+
+
+// int main(int argc, char **argv) {
+  
+//   if (argc!=6) {
+//     std::cout<<"Please enter correct number of arguments!"<<std::endl;
+//     return -1;
+//   }
+  
+//   int n_threads = std::atoi(argv[1]);
+//   std::thread threads[n_threads];
+//   int total = std::atoi(argv[2])/n_threads;
+//   int push = std::atoi(argv[3]);
+//   int pop = std::atoi(argv[4]);
+//   int size = std::atoi(argv[5]);
+
+//   // List order of operations
+//   std::vector<int> ops = init_ops(total, total*push/100, total*pop/100, total*size/100);
+//   // lists nodes to work with
+//   std::vector<node *> toGoThrough = init_list(total*n_threads);
+//   DescriptorStack s = DescriptorStack();
+//   // where the magic happens
+//   for (int j=0; j<10; j++) {
+//     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+
+//     for (int i=0; i<n_threads; i++) {
+//       threads[i] = std::thread(routine_4, std::ref(s), std::ref(toGoThrough), i+1, n_threads, std::ref(ops));  
+//     }
+//     for (int i=0; i<n_threads; i++) {
+//       threads[i].join();
+//     }
+
+//     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+//     std::chrono::duration<double, std::milli> time_span = t2 - t1;
+
+//     // print_stack(s);
+//     std::cout<<time_span.count()<<std::endl;
+//     // std::cout<<s.size()<<"\n\n";
+//   }
+// }

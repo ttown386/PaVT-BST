@@ -1,3 +1,4 @@
+
 //
 // Created by ttown on 9/30/2018.
 //
@@ -12,8 +13,8 @@ class BinarySearchTree {
 // private:
   bool isAvl;
   Node *root=nullptr;
-  Node *leftSentinel;
-  Node *rightSentinel;
+  Node *maxSentinel;
+  Node *minSentinel;
   int nextField(Node *node, int const &data);
   void updateHeights(Node *curr);
   Node *rotateLeft(Node *node);

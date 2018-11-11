@@ -6,6 +6,7 @@
 #define CONCURRENTTREETRAVERALS_NODE_H
 
 #include <mutex>
+#include <atomic>
 
 class Node {
  private:
@@ -18,8 +19,8 @@ class Node {
   std::mutex lock;
   bool mark;
   bool sentinel;
-  Node *leftSnap;
-  Node *rightSnap;
+  std::atomic<Node *> leftSnap;
+  std::atomic<Node *> rightSnap;
   Node(int const& data);
   ~Node();
   int getData();
