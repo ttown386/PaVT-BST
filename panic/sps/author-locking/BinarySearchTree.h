@@ -12,6 +12,8 @@ class BinarySearchTree {
 // private:
   bool isAvl;
   Node *root=nullptr;
+  Node *leftSentinel;
+  Node *rightSentinel;
   int nextField(Node *node, int const &data)
   void updateHeights(Node *curr);
   Node *rotateLeft(Node *node);

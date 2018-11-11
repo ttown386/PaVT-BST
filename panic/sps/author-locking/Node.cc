@@ -9,7 +9,7 @@ Node::Node(int const& data) {
   setLeft(nullptr);
   setRight(nullptr);
   setParent(nullptr);
-  succ = pred = this;
+  leftSnap = rightSnap = this;
   setHeight(0);
   mark = false;
   sentinel = false;

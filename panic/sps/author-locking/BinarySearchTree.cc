@@ -1,6 +1,15 @@
 //
 // Created by ttown on 9/30/2018.
 //
+//    // Lock Node
+    curr->lock.lock();
+    if (curr->mark) continue;
+
+    // grab snapshot
+    // check if restart is needed
+    bool goLeft = (data < curr->getData() ? true : false);
+    Node *snapShot = (parentIsLarger ? curr->)
+    if ((parentIsLarger && ()) )
 
 #include "BinarySearchTree.h"
 #include <algorithm>
@@ -18,13 +27,16 @@ const int HERE = 2;
 
 BinarySearchTree::BinarySearchTree(bool isAvl) {
   this->isAvl = isAvl;
-  this->root = new Node(iMax);
-  Node *min = new Node(iMin);
-  root->setLeft(min);
-  min->setParent(root);
-  root->setParent(nullptr);
+
+  rightSentinel = new Node(iMin);
+  leftSentinel = new Node(iMax);
+
+  leftSentinel->parent = rightSentinel;
+  rightSentinel->right = leftSentinel;
+
+  this->root = rightSentinel;
   root->sentinel = true;
-  min->sentinel = true;
+  leftSentinel->sentinel = true;
 }
 
 BinarySearchTree::~BinarySearchTree() {

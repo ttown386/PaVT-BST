@@ -7,6 +7,7 @@
 #include <iostream>
 #include <limits>
 #include <stack>
+#include <queue>
 
 const int MAXBF = 1;
 const int MINBF = -1;
@@ -17,14 +18,26 @@ const int RIGHT = 1;
 const int HERE = 2;
 
 BinarySearchTree::BinarySearchTree(bool isAvl) {
+  // AVL condition
   this->isAvl = isAvl;
-  this->root = new Node(iMax);
-  Node *min = new Node(iMin);
-  root->setLeft(min);
-  min->setParent(root);
-  root->setParent(nullptr);
-  root->sentinel = true;
-  min->sentinel = true;
+
+  // Bounds
+  rightSentinel = new Node(iMin);
+  leftSentinel = new Node(iMax);
+
+  // tree structure
+  leftSentinel->setParent(rightSentinel);
+  rightSentinel->setRight(leftSentinel);
+
+  // Snapshots
+  leftSentinel->leftSnap = rightSentinel;
+  rightSentinel->rightSnap = leftSentinel;
+
+  // Sentinel Conditions
+  rightSentinel->sentinel = true;
+  leftSentinel->sentinel = true;
+
+  this->root = leftSentinel;
 }
 
 BinarySearchTree::~BinarySearchTree() {
@@ -35,17 +48,7 @@ Node *BinarySearchTree::getRoot() {
   return root;
 }
 
-void updateSnaps(Node *start, Node *toUpdate, Node *parent) {
-  if (toUpdate->getData()==iMin || toUpdate->getData()==iMax)
-    return;
-  
-}
-
-void updateSnaps(Node *node) {
-  updateSnaps(node, node, node->getParent());
-}
-
-int nextField(Node *node, int const &data) {
+int BinarySearchTree::nextField(Node *node, int const &data) {
 
   // c1(node, data) = L
   if (data<node->getData()) return LEFT;
@@ -57,23 +60,38 @@ int nextField(Node *node, int const &data) {
   return HERE;
 }
 
+void BinarySearchTree::updateSnaps(Node *node) {
+
+  Node *parent = node->getParent();
+  int field = nextField(parent, node->getData());
+
+  if (field == LEFT){
+    (parent->leftSnap)->rightSnap = node;
+    parent->leftSnap = node;
+  } else {
+    (parent->rightSnap)->leftSnap = node;
+    parent->rightSnap = node;
+  }
+  
+}
+
 Node *BinarySearchTree::traverse(Node *node, int const &data) {
 
   bool restart = false;
   while (true) {
 
     Node *curr = node;
-    int nextField = nextField(curr, data);
+    int field = nextField(curr, data);
 
     // traverse
-    while (curr->get(nextField)!=nullptr) {
+    while (curr->get(field)!=nullptr) {
 
-      curr = curr->get(nextField);
+      curr = curr->get(field);
 
-      nextField = nextField(curr, data);
+      field = nextField(curr, data);
 
       // We have found node
-      if (nextField==HERE) {
+      if (field==HERE) {
 
         // If marked then break from first while loop and restart
         curr->lock.lock();
@@ -97,6 +115,13 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
 
     // grab snapshot
     // check if restart is needed
+    bool goLeft = (data < curr->getData() ? true : false);
+    Node *snapShot = (goLeft? curr->leftSnap : curr->rightSnap);
+    if (curr->mark || (goLeft && (data < snapShot->getData()))||
+        (!goLeft &&(data > snapShot->getData()))) {
+      curr->lock.unlock();
+      continue;
+    }
 
     return curr;
   }
@@ -105,39 +130,57 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
 void BinarySearchTree::insert(int const &data) {
 
   // Otherwise we traverse
-  Node *curr = traverse(root, data);
+  while (true) {
+    Node *curr = traverse(root, data);
 
-  // We have a duplicate
-  // TODO incorperate for External BST
-  if (curr->getData()==data ||
-    (data > curr->getData() && curr->getRight()!=nullptr) ||
-    (data < curr->getData() && curr->getLeft()!=nullptr)) {
-    // TODO: unlock
-    return;
+    // We have a duplicate
+    if (curr->getData()== data) {
+      curr->lock.unlock();
+      return;
+    }
+    
+    // No longer a leaf node
+    if (curr->getData()==data ||
+      (data > curr->getData() && curr->getRight()!=nullptr) ||
+      (data < curr->getData() && curr->getLeft()!=nullptr)) {
+
+      curr->lock.unlock();
+      continue;
+    }
+
+    Node *newNode = new Node(data);
+    newNode->setParent(curr);
+
+    // Copy snaps from parent
+    bool parentIsLarger = data < curr->getData();
+    if (parentIsLarger) {
+      newNode->leftSnap = curr->leftSnap;
+      newNode->rightSnap = curr;
+    } else {
+      newNode->leftSnap = curr;
+      newNode->rightSnap = curr->rightSnap;
+    }
+
+    // Update Snaps
+    updateSnaps(newNode);
+    
+    // Add to path an update snaps
+    if (parentIsLarger) {
+      curr->setLeft(newNode);
+    } else {
+      curr->setRight(newNode);
+    }
+
+    // Perform AVL rotations if applicable
+    if (isAvl){
+      // Update heights
+      updateHeights(curr);
+      rebalance(curr);
+    }
+
+    // Unlock
+    curr->lock.unlock();
   }
-
-  // update parent;
-  Node *newNode = new Node(data);
-
-  newNode->setParent(curr);
-
-  bool parentIsLarger = data < curr->getData();
-  if (parentIsLarger) {
-    curr->setLeft(newNode);
-  } else {
-    curr->setRight(newNode);
-  }
-
-  //TODO: Update Snaps
-
-  // Perform AVL rotations if applicable
-  if (isAvl){
-    // Update heights
-    updateHeights(curr);
-    rebalance(curr);
-  }
-
-  //TODO: Unlock
 }
 
 void BinarySearchTree::remove(int const &data) {
@@ -500,34 +543,38 @@ void preOrderTraversal(BinarySearchTree &bst) {
   std::cout<<std::endl;
 }
 
+void printSnaps(BinarySearchTree bst) {
+  Node *start = bst.root;
+  std::queue<Node *> q;
+  q.push(start);
+
+  while(!q.empty()) {
+
+    Node *curr = q.front();
+    q.pop();
+    std::cout<<curr->getData()<<": ("<<curr->leftSnap->getData()<<",";
+    std::cout<<curr->rightSnap->getData()<<")\n";
+    if (curr->getLeft()!=nullptr) q.push(curr->getLeft());
+    if (curr->getRight()!=nullptr) q.push(curr->getRight());
+  }
+}
+
 int main() {
 
   BinarySearchTree bst;
-  const int balanced[7] =  {4, 2, 6, 1, 3, 5, 7};
+  // const int balanced[7] =  {4, 2, 6, 1, 3, 5, 7};
 
-  for (int i=0; i<7; i++) {
-    bst.insert(balanced[i]);
-  }
-
-  preOrderTraversal(bst);
-  inOrderTraversal(bst);
-  std::cout<<bst.contains(6)<<std::endl;
-  std::cout<<bst.contains(24)<<std::endl;
-
-  bst.remove(6);
-  bst.remove(24);
+  // for (int i=0; i<7; i++) {
+  //   bst.insert(balanced[i]);
+  // }
+  bst.insert(4);
+  bst.insert(3);
+  bst.insert(12);
+  bst.insert(9);
 
   preOrderTraversal(bst);
   inOrderTraversal(bst);
-
-  BinarySearchTree bst2(true);
-
-  for (int i=0; i<10; i++) {
-    bst.insert(i);
-  }
-
-  preOrderTraversal(bst);
-  inOrderTraversal(bst);
+  printSnaps(bst);
 
   return 0;
 }
