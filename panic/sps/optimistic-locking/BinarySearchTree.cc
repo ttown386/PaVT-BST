@@ -280,10 +280,9 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
       }
 
       // if the snapshot has changed restart
-      if ((hasRightChild && snapshot->rightSnap.load()!=curr) || 
-          (!hasRightChild && snapshot->leftSnap.load()!=curr) ||
+      if ((hasRightChild && snapshot->leftSnap.load()!=curr) || 
+          (!hasRightChild && snapshot->rightSnap.load()!=curr) ||
 					snapshot->mark) {
-
         if (lockedSnap) snapshot->lock.unlock(); // Released in reverse locking order
         currChild->lock.unlock();
         curr->lock.unlock();
