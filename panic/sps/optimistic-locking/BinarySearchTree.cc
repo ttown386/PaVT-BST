@@ -217,6 +217,16 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
       continue;
     }
 
+		//Some other thread has gone and changed things around
+		//Got to check if we already got removed otherwise unlock restart
+		if (parent != curr->getParent()) {
+			if (curr->mark) {
+				curr->lock.unlock();
+				return;
+			}
+			continue;
+		}
+
     bool parentIsLarger = (parent->getData() > data ? true : false);
 
     printf("%d: 1\n", id);
