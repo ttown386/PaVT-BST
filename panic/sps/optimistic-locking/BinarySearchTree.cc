@@ -423,6 +423,7 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
         leftChild->lock.unlock();
         curr->lock.unlock();
         parent->lock.unlock();
+        continue;
       }
     }
     printf("%d: 12\n", id);
