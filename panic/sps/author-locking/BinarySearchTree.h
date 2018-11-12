@@ -1,3 +1,4 @@
+
 //
 // Created by ttown on 9/30/2018.
 //
@@ -11,10 +12,9 @@ class BinarySearchTree {
  public:
 // private:
   bool isAvl;
-  Node *root=nullptr;
-  Node *leftSentinel;
-  Node *rightSentinel;
-  int nextField(Node *node, int const &data)
+  Node *root;
+  Node *maxSentinel;
+  Node *minSentinel;
   void updateHeights(Node *curr);
   Node *rotateLeft(Node *node);
   Node *rotateRight(Node *node);
@@ -24,12 +24,13 @@ class BinarySearchTree {
   Node *traverse(Node *node, int const &data);
   void updateSnaps(Node *node);
   void updateSnaps(Node *start, Node *toUpdate, Node *parent);
+  void applyRemove(Node *rightNode, Node *node, Node *parent, Node *left, Node *right, bool leftChild, Node *succ, Node *succParent, Node *succRight, Node *succRightSnapshot);
 
 // public:
   BinarySearchTree(bool isAvl=false);
   ~BinarySearchTree();
   void insert(int const& data);
-  void remove(int const& data);
+  void remove(int const& data, int &id);
   bool contains(int const& data);
   Node *getRoot();
 
