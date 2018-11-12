@@ -9,6 +9,10 @@
 #include <stack>
 #include <queue>
 #include <stdio.h>
+#include <thread>
+#include <random>
+#include <algorithm>
+#include <sstream>
 
 const int MAXBF = 1;
 const int MINBF = -1;
@@ -79,22 +83,16 @@ void BinarySearchTree::updateSnaps(Node *node) {
 Node *BinarySearchTree::traverse(Node *node, int const &data) {
 
   bool restart = false;
+
   while (true) {
 
     Node *curr = node;
-    int field = nextField(curr, data);
+    Node *parent = node->getParent();
 
     // traverse
-    while (curr->get(field)!=nullptr) {
+    while (curr != nullptr) {
 
-      curr = curr->get(field);
-
-      field = nextField(curr, data);
-
-      // We have found node
-      if (field==HERE) {
-
-        // If marked then break from first while loop and restart
+      if (curr->getData() == data) {
         curr->lock.lock();
         if (curr->mark) {
           restart = true;
@@ -102,9 +100,15 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
           break;
         }
 
-        // Only executed if curr is not marked
         return curr;
       }
+
+      // update parent;
+      parent = curr;
+  
+      // traverse to next child
+      bool parentIsLarger = data < parent->getData();
+      curr = (parentIsLarger ? curr->getLeft() : curr->getRight());
     }
 
     if (restart == true) {
@@ -112,19 +116,17 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
       continue;
     }
 
-    curr->lock.lock();
-
+    parent->lock.lock();
     // grab snapshot
     // check if restart is needed
-    bool goLeft = (data < curr->getData() ? true : false);
-    Node *snapShot = (goLeft? curr->leftSnap.load() : curr->rightSnap.load());
-    if (curr->mark || (goLeft && (data < snapShot->getData()))||
-        (!goLeft &&(data > snapShot->getData()))) {
-      curr->lock.unlock();
+    bool goLeft = (data < parent->getData() ? true : false);
+    Node *snapShot = (goLeft? parent->leftSnap.load() : parent->rightSnap.load());
+    if (parent->mark || (goLeft && (data <= snapShot->getData()))||
+        (!goLeft &&(data >= snapShot->getData()))) {
+      parent->lock.unlock();
       continue;
     }
-
-    return curr;
+    return parent;
   }
 }
 
@@ -132,13 +134,16 @@ void BinarySearchTree::insert(int const &data) {
 
   // Otherwise we traverse
   while (true) {
-    Node *curr = traverse(root, data);
 
+    Node *curr = traverse(root, data);
+  
     // We have a duplicate
     if (curr->getData()== data) {
+
       curr->lock.unlock();
       return;
     }
+    
     
     // No longer a leaf node
     if (
@@ -149,28 +154,35 @@ void BinarySearchTree::insert(int const &data) {
       continue;
     }
 
+
+    
     Node *newNode = new Node(data);
     newNode->setParent(curr);
 
     // Copy snaps from parent
     bool parentIsLarger = data < curr->getData();
-    if (parentIsLarger) {
-      newNode->leftSnap = curr->leftSnap.load();
-      newNode->rightSnap = curr;
-    } else {
-      newNode->leftSnap = curr;
-      newNode->rightSnap = curr->rightSnap.load();
-    }
+    Node *snapshot = (parentIsLarger ? curr->leftSnap.load() : curr->rightSnap.load());
 
-    // Update Snaps
-    updateSnaps(newNode);
-    
-    // Add to path an update snaps
     if (parentIsLarger) {
+      newNode->leftSnap = snapshot;
+      newNode->rightSnap = curr;
+
+      snapshot->rightSnap = newNode;
+      curr->leftSnap = newNode;
+
       curr->setLeft(newNode);
     } else {
+      newNode->leftSnap = curr;
+      newNode->rightSnap = snapshot;
+
+      snapshot->leftSnap = newNode;
+      curr->rightSnap = newNode;
+
       curr->setRight(newNode);
     }
+
+    // Unlock
+    curr->lock.unlock();
 
     // Perform AVL rotations if applicable
     if (isAvl){
@@ -178,40 +190,43 @@ void BinarySearchTree::insert(int const &data) {
       updateHeights(curr);
       rebalance(curr);
     }
-
-    // Unlock
-    curr->lock.unlock();
   }
 }
 
-void BinarySearchTree::remove(int const &data) {
+void BinarySearchTree::remove(int const &data, int &thread_id) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
-
+  int id = thread_id;
+  printf("Thread %d : \n", id);
   while (true) {
     Node *curr = traverse(root, data);
+    std::cout<<curr->getData()<<std::endl;
 
     // Already checked snapshots so return if current
     // node is not one to be deleted
     if (curr->getData()!= data) {
       return;
     }
-
+    
+    printf("%d: 0\n", id);
     // Lock all nodes
     Node *parent = curr->getParent();
     if (!parent->lock.try_lock()) {
+      curr->lock.unlock();
       continue;
     }
 
     bool parentIsLarger = (parent->getData() > data ? true : false);
 
+    printf("%d: 1\n", id);
     /*  A leaf node */
     Node *leftChild = curr->getLeft();
     Node *rightChild = curr->getRight();
     if (leftChild== nullptr && rightChild == nullptr) {
       maxSnapNode = curr->rightSnap.load();
       minSnapNode = curr->leftSnap.load();
+      curr->mark = true;
       if (parentIsLarger) {
         parent->setLeft(nullptr);
         parent->leftSnap = minSnapNode;
@@ -221,14 +236,23 @@ void BinarySearchTree::remove(int const &data) {
         parent->rightSnap = maxSnapNode;
         maxSnapNode->leftSnap = parent;
       }
+      curr->lock.unlock();
+      parent->lock.unlock();
       return;
     }
 
-    if (leftChild !=nullptr)
+    printf("%d: 2\n", id);
+    if (leftChild !=nullptr) {
+      std::cout<<id<<": leftChild :"<<leftChild->getData()<<"\n";
       leftChild->lock.lock();
-    if (rightChild !=nullptr)
+    }
+    printf("%d: 2a\n", id);
+    if (rightChild !=nullptr) {
+      std::cout<<id<<": RightChild :"<<rightChild->getData()<<"\n";
       rightChild->lock.lock();
+    }
 
+    printf("%d: 3\n", id);
     /* A node with at most 1 child */
     if (leftChild==nullptr || rightChild==nullptr) {
       maxSnapNode = curr->rightSnap.load();
@@ -243,11 +267,13 @@ void BinarySearchTree::remove(int const &data) {
       if (snapshot!=currChild) {
         snapshot->lock.lock();
         lockedSnap = true;
+
       }
 
       // if the snapshot has changed restart
       if ((hasRightChild && snapshot!=curr->rightSnap.load()) || 
           (!hasRightChild && snapshot!=curr->leftSnap.load())) {
+
         if (lockedSnap) snapshot->lock.unlock(); // Released in reverse locking order
         currChild->lock.unlock();
         curr->lock.unlock();
@@ -278,12 +304,18 @@ void BinarySearchTree::remove(int const &data) {
       return;
     }
 
+
     maxSnapNode = curr->rightSnap.load();
     minSnapNode = curr->leftSnap.load();
-    minSnapNode->lock.lock();
 
+    printf("%d: 4\n", id);
+    bool lockedPredecessorSnap = false;
+    if (minSnapNode != leftChild) {
+      minSnapNode->lock.lock();
+      lockedPredecessorSnap = true;
+    } 
     if (minSnapNode->rightSnap!=curr || minSnapNode->mark) {
-      minSnapNode->lock.unlock();
+      if (lockedPredecessorSnap) minSnapNode->lock.unlock();
       rightChild->lock.unlock();
       leftChild->lock.unlock();
       curr->lock.unlock();
@@ -291,6 +323,8 @@ void BinarySearchTree::remove(int const &data) {
       continue;
     }
 
+    std::cout<<id<<": predecessor :"<<minSnapNode->getData()<<"\n";
+    printf("%d: 5\n", id);
     /* Node with where the right child's left node is null */
     if (rightChild->getLeft() == nullptr) {
       curr->mark = true;
@@ -309,6 +343,7 @@ void BinarySearchTree::remove(int const &data) {
       minSnapNode->rightSnap = maxSnapNode;
       maxSnapNode->leftSnap = minSnapNode;
       // TODO: Unlock all
+      if (lockedPredecessorSnap) minSnapNode->lock.unlock();
       rightChild->lock.unlock();
       leftChild->lock.unlock();
       curr->lock.unlock();
@@ -317,21 +352,31 @@ void BinarySearchTree::remove(int const &data) {
       return;
     }
 
-    Node *successor = traverse(curr->getRight(), data);
-    if (maxSnapNode!=successor) {
-      minSnapNode->lock.unlock();
-      successor->lock.unlock();
-      rightChild->lock.unlock();
-      leftChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
-      continue;
+    printf("%d: 6\n", id);
+    bool lockedSuccessorParent = false;
+    Node *successor = maxSnapNode;
+    Node *successorParent = successor->getParent();
+    if (successorParent!=rightChild) {
+      successorParent->lock.lock();
+      if (maxSnapNode->leftSnap.load() != curr || maxSnapNode->mark) {
+        successor->lock.unlock();
+        if (lockedPredecessorSnap) minSnapNode->lock.unlock();
+        rightChild->lock.unlock();
+        leftChild->lock.unlock();
+        curr->lock.unlock();
+        parent->lock.unlock();
+        continue;
+      }
+
+      lockedSuccessorParent = true;
     }
 
-    Node *successorParent = successor->getParent();
-    if (!successorParent->lock.try_lock()) {
-      minSnapNode->lock.unlock();
+    printf("%d: 7\n", id);
+    successor->lock.lock();
+    if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->mark) {
       successor->lock.unlock();
+      if (lockedSuccessorParent) successorParent->lock.unlock();
+      if (lockedPredecessorSnap) minSnapNode->lock.unlock();
       rightChild->lock.unlock();
       leftChild->lock.unlock();
       curr->lock.unlock();
@@ -339,26 +384,47 @@ void BinarySearchTree::remove(int const &data) {
       continue;
     }
     
-    Node *successorRightSnapshot = successor->rightSnap;
-    bool lockedSuccessorSnap = false;
+
+    std::cout<<id<<": succParent :"<<successorParent->getData()<<"\n";
+    printf("%d: 8\n", id);
+    bool lockedSuccessorRightSnap = false;
+    bool lockedSuccessorRightChild = false;
+    
+    Node *successorRightSnapshot = successor->rightSnap.load();
     Node *successorRightChild = successor->getRight();
+
     if (successorRightChild!=nullptr)  {
+
+      printf("%d: 9\n", id);
       successorRightChild->lock.lock();
-      if (successorRightChild->getLeft()!=nullptr) {
+      lockedSuccessorRightChild = true;
+      std::cout<<id<<": succRight :"<<successorRightChild->getData()<<"\n";
+
+      printf("%d: 10\n", id);
+      successorRightSnapshot = successor->rightSnap.load();
+      if (successorRightSnapshot!=successorRightChild) {
         successorRightSnapshot->lock.lock();
-        lockedSuccessorSnap = true;
+        lockedSuccessorRightSnap = true;
       }
-      if (successorRightSnapshot->leftSnap!=successor||
+      std::cout<<id<<": succRightSnap :"<<successorRightSnapshot->getData()<<"\n";
+
+      printf("%d: 11\n", id);
+      if (successorRightSnapshot->leftSnap.load()!=successor||
           successorRightSnapshot->mark) {
-        if (lockedSuccessorSnap) successorRightSnapshot->lock.unlock();
-        minSnapNode->lock.unlock();
+
+        // Unlock all
+        if (lockedSuccessorRightSnap) successorRightSnapshot->lock.unlock();
+        if (lockedSuccessorRightChild) successorRightChild->lock.unlock();
         successor->lock.unlock();
+        if (lockedSuccessorParent) successorParent->lock.unlock();
+        if (lockedPredecessorSnap) minSnapNode->lock.unlock();
         rightChild->lock.unlock();
         leftChild->lock.unlock();
         curr->lock.unlock();
         parent->lock.unlock();
       }
     }
+    printf("%d: 12\n", id);
     // Mark the node
     curr->mark = true;
 
@@ -390,9 +456,11 @@ void BinarySearchTree::remove(int const &data) {
     minSnapNode->rightSnap = successor;
 
     // Unlock All
-    if (lockedSuccessorSnap) successorRightSnapshot->lock.unlock();
-    minSnapNode->lock.unlock();
+    if (lockedSuccessorRightSnap) successorRightSnapshot->lock.unlock();
+    if (lockedSuccessorRightChild) successorRightChild->lock.unlock();
     successor->lock.unlock();
+    if (lockedSuccessorParent) successorParent->lock.unlock();
+    if (lockedPredecessorSnap) minSnapNode->lock.unlock();
     rightChild->lock.unlock();
     leftChild->lock.unlock();
     curr->lock.unlock();
@@ -671,10 +739,20 @@ void printSnaps(BinarySearchTree bst) {
     Node *curr = q.front();
     q.pop();
     std::cout<<curr->getData()<<": ("<<curr->leftSnap.load()->getData()<<",";
-    std::cout<<curr->rightSnap.load()->getData()<<")\n";
+    std::cout<<curr->rightSnap.load() ->getData()<<")\n";
     if (curr->getLeft()!=nullptr) q.push(curr->getLeft());
     if (curr->getRight()!=nullptr) q.push(curr->getRight());
   }
+}
+
+std::vector<int> init_list_ints(int num) {
+  std::vector<int> vector;
+  for (int i=0; i<num; i++) {
+    vector.push_back(i);
+  }
+  auto rng = std::default_random_engine {};
+  std::shuffle(std::begin(vector), std::end(vector), rng);
+  return vector;
 }
 
 std::vector<Node *> init_list(int num) {
@@ -683,7 +761,26 @@ std::vector<Node *> init_list(int num) {
     Node *n = new Node(i);
     vector.push_back(n);
   }
+  auto rng = std::default_random_engine {};
+  std::shuffle(std::begin(vector), std::end(vector), rng);
   return vector;
+}
+
+void routine_1(BinarySearchTree &bst, int id, int n_threads, 
+              std::vector<int> keys) {
+
+  int count = 0;
+  for (int i=1*id; i<keys.size(); i+=n_threads) {
+    // printf("Thread %d: insert #%d\n", id, count);
+    bst.insert(keys.at(i));
+    // count++;
+  }
+  int increment = n_threads/2;
+  for (int i=1*id; i<keys.size(); i+=increment) {
+    bst.remove(keys.at(i), id);
+    // printf("Thread %d: remove #%d\n", id, count);
+    // count++;
+  }
 }
 
 // // Routine for threads. Performs all ops
@@ -728,92 +825,83 @@ std::vector<Node *> init_list(int num) {
 /**
  * Sequential Main
  */
-int main() {
+// int main() {
 
-  BinarySearchTree bst;
+//   BinarySearchTree bst;
 
-  bst.insert(7);
-  bst.insert(3);
-  bst.insert(12);
-  bst.insert(9);
-  bst.insert(1);
-  bst.insert(6);
-  bst.insert(14);
-  bst.insert(10);
-  bst.insert(11);
+//   bst.insert(7);
+//   bst.insert(3);
+//   bst.insert(12);
+//   bst.insert(9);
+//   bst.insert(1);
+//   bst.insert(6);
+//   bst.insert(14);
+//   bst.insert(10);
+//   bst.insert(11);
 
-  preOrderTraversal(bst);
-  inOrderTraversal(bst);
-  printSnaps(bst);
-  printf("\n");
+//   preOrderTraversal(bst);
+//   inOrderTraversal(bst);
+//   printSnaps(bst);
+//   printf("\n");
 
-  printf("Remove 11\n");
-  bst.remove(11);
-  preOrderTraversal(bst);
-  inOrderTraversal(bst);
-  printSnaps(bst);
-  printf("\n");
+//   printf("Remove 11\n");
+//   bst.remove(11);
+//   preOrderTraversal(bst);
+//   inOrderTraversal(bst);
+//   printSnaps(bst);
+//   printf("\n");
 
-  printf("Remove 10\n");
-  bst.insert(11);
-  bst.remove(10);
-  preOrderTraversal(bst);
-  inOrderTraversal(bst);
-  printSnaps(bst);
-  printf("\n");
+//   printf("Remove 10\n");
+//   bst.insert(11);
+//   bst.remove(10);
+//   preOrderTraversal(bst);
+//   inOrderTraversal(bst);
+//   printSnaps(bst);
+//   printf("\n");
 
-  printf("Remove 12\n");
-  bst.remove(12);
-  preOrderTraversal(bst);
-  inOrderTraversal(bst);
-  printSnaps(bst);
-  printf("\n");
+//   printf("Remove 12\n");
+//   bst.remove(12);
+//   preOrderTraversal(bst);
+//   inOrderTraversal(bst);
+//   printSnaps(bst);
+//   printf("\n");
 
-  printf("Remove 7\n");
-  bst.remove(7);
-  preOrderTraversal(bst);
-  inOrderTraversal(bst);
-  printSnaps(bst);
-  printf("\n");
-  return 0;
-}
-
-
-// int main(int argc, char **argv) {
-  
-//   if (argc!=6) {
-//     std::cout<<"Please enter correct number of arguments!"<<std::endl;
-//     return -1;
-//   }
-  
-//   int n_threads = std::atoi(argv[1]);
-//   std::thread threads[n_threads];
-//   int total = std::atoi(argv[2])/n_threads;
-//   int push = std::atoi(argv[3]);
-//   int pop = std::atoi(argv[4]);
-//   int size = std::atoi(argv[5]);
-
-//   // List order of operations
-//   std::vector<int> ops = init_ops(total, total*push/100, total*pop/100, total*size/100);
-//   // lists nodes to work with
-//   std::vector<node *> toGoThrough = init_list(total*n_threads);
-//   DescriptorStack s = DescriptorStack();
-//   // where the magic happens
-//   for (int j=0; j<10; j++) {
-//     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-
-//     for (int i=0; i<n_threads; i++) {
-//       threads[i] = std::thread(routine_4, std::ref(s), std::ref(toGoThrough), i+1, n_threads, std::ref(ops));  
-//     }
-//     for (int i=0; i<n_threads; i++) {
-//       threads[i].join();
-//     }
-
-//     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-//     std::chrono::duration<double, std::milli> time_span = t2 - t1;
-
-//     // print_stack(s);
-//     std::cout<<time_span.count()<<std::endl;
-//     // std::cout<<s.size()<<"\n\n";
-//   }
+//   printf("Remove 7\n");
+//   bst.remove(7);
+//   preOrderTraversal(bst);
+//   inOrderTraversal(bst);
+//   printSnaps(bst);
+//   printf("\n");
+//   return 0;
 // }
+
+
+int main(int argc, char **argv) {
+  
+  std::cout<<"here"<<std::endl;
+  if (argc!=2) {
+    std::cout<<"Please enter correct number of arguments!"<<std::endl;
+    return -1;
+  }
+  
+  int n_threads = std::atoi(argv[1]);
+  std::thread threads[n_threads];
+  
+  std::mutex lock;
+
+  std::vector<int> keys = init_list_ints(20);
+  BinarySearchTree bst = BinarySearchTree();
+  for (int i=0; i<n_threads; i++) {
+    threads[i] = std::thread(routine_1, std::ref(bst), i, n_threads, std::ref(keys));  
+  }
+  for (int i=0; i<n_threads; i++) {
+    threads[i].join();
+  }
+  printf("Preorder :");
+  preOrderTraversal(bst);
+  printf("Inorder :");
+  inOrderTraversal(bst);
+  printf("Snaps: \n");
+  printSnaps(bst);
+  printf("\n");
+}
