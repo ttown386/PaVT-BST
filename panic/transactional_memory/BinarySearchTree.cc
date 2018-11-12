@@ -478,9 +478,9 @@ std::vector<Node *> init_list(int num) {
 void doInserts(BinarySearchTree bst, int numberOfItems, int insertArray[]){
 	//int numberOfTestCases = 100;
 	//range = numberOfTestCases * (index + 1);
-	for (int i = 0; i < 30; ++i) {
-		
+	for (int i = 0; i < numberOfItems; ++i) {
 		bst.insert(insertArray[i]);
+		
 	}
 }
 
@@ -507,17 +507,17 @@ int main() {
 
 	BinarySearchTree bst;
 
-	int numberOfThreads = 6, numberOfItems = 10;
+	int numberOfThreads = 6, numberOfItems = 10000;
 
-	int insertArray[6][30];
+	int insertArray[6][10000];
 	//Populating random number array
 	for (int i = 0; i < numberOfItems; ++i) {
-		insertArray[0][i] = std::rand() % 100;
-		insertArray[1][i] = std::rand() % 100;
-		insertArray[2][i] = std::rand() % 100;
-		insertArray[3][i] = std::rand() % 100;
-		insertArray[4][i] = std::rand() % 100;
-		insertArray[5][i] = std::rand() % 100;
+		insertArray[0][i] = std::rand() % numberOfItems;
+		insertArray[1][i] = std::rand() % numberOfItems;
+		insertArray[2][i] = std::rand() % numberOfItems;
+		insertArray[3][i] = std::rand() % numberOfItems;
+		insertArray[4][i] = std::rand() % numberOfItems;
+		insertArray[5][i] = std::rand() % numberOfItems;
 	}
 	
 	//*bst = new BinarySearchTree();
@@ -535,17 +535,17 @@ int main() {
 	t5.join();
 	t6.join();
 
-	preOrderTraversal(bst);
+	//preOrderTraversal(bst);
 	//inOrderTraversal(bst);
 	//printSnaps(bst);
 	printf("\n");
 
 	//Checking what is in the array at this time
-	for (int i = 0; i < 6; ++i) {
-		for (int j = 0; j < numberOfItems; ++j) {
-			std::cout << insertArray[i][j] << " " << std::endl;
-		}
-	}
+	//for (int i = 0; i < 6; ++i) {
+	//	for (int j = 0; j < numberOfItems; ++j) {
+	//		std::cout << insertArray[i][j] << " " << std::endl;
+	//	}
+	//}
 
 	return 0;
 }
