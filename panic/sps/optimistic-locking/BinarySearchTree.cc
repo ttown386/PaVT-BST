@@ -220,8 +220,8 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
 		//Some other thread has gone and changed things around
 		//Got to check if we already got removed otherwise unlock restart
 		if (parent != curr->getParent()) {
+			curr->lock.unlock();
 			if (curr->mark) {
-				curr->lock.unlock();
 				return;
 			}
 			continue;
