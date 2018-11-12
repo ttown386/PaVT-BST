@@ -271,8 +271,8 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
       }
 
       // if the snapshot has changed restart
-      if ((hasRightChild && snapshot!=curr->rightSnap.load()) || 
-          (!hasRightChild && snapshot!=curr->leftSnap.load())) {
+      if ((hasRightChild && snapshot->rightSnap.load()!=curr) || 
+          (!hasRightChild && snapshot->leftSnap.load()!=curr)) {
 
         if (lockedSnap) snapshot->lock.unlock(); // Released in reverse locking order
         currChild->lock.unlock();
@@ -356,10 +356,11 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
     bool lockedSuccessorParent = false;
     Node *successor = maxSnapNode;
     Node *successorParent = successor->getParent();
+
     if (successorParent!=rightChild) {
       successorParent->lock.lock();
-      if (maxSnapNode->leftSnap.load() != curr || maxSnapNode->mark) {
-        successor->lock.unlock();
+      if (maxSnapNode->getParent() != parent || maxSnapNode->mark) {
+        successorParent->lock.unlock();
         if (lockedPredecessorSnap) minSnapNode->lock.unlock();
         rightChild->lock.unlock();
         leftChild->lock.unlock();
