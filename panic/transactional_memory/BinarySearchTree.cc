@@ -159,19 +159,27 @@ void BinarySearchTree::insert(int const &data) {
 			Node *newNode = new Node(data);
 			newNode->setParent(curr);
 
-		
 			// Copy snaps from parent
 			bool parentIsLarger = data < curr->getData();
+			Node *snapshot = (parentIsLarger ? curr->leftSnap : curr->rightSnap);
+
 			if (parentIsLarger) {
 				newNode->leftSnap = curr->leftSnap;
 				newNode->rightSnap = curr;
+
+				snapshot->rightSnap = newNode;
+				curr->leftSnap = newNode;
+
+				curr->setLeft(newNode);
 			} else {
 				newNode->leftSnap = curr;
 				newNode->rightSnap = curr->rightSnap;
-			}
 
-			// Update Snaps
-			updateSnaps(newNode);
+				snapshot->leftSnap = newNode;
+				curr->rightSnap = newNode;
+
+				curr->setRight(newNode);
+			}
     
 			// Add to path an update snaps
 			if (parentIsLarger) {
