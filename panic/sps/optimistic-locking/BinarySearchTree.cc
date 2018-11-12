@@ -81,53 +81,51 @@ void BinarySearchTree::updateSnaps(Node *node) {
 }
 
 Node *BinarySearchTree::traverse(Node *node, int const &data) {
+	bool restart = false;
+	while (true) {
 
-  bool restart = false;
+		Node *curr = root;
+		int field = nextField(curr, data);
 
-  while (true) {
+		// traverse
+		while (curr->get(field) != nullptr) {
 
-    Node *curr = node;
-    Node *parent = node->getParent();
+			curr = curr->get(field);
 
-    // traverse
-    while (curr != nullptr) {
+			field = nextField(curr, data);
 
-      if (curr->getData() == data) {
-        curr->lock.lock();
-        if (curr->mark) {
-          restart = true;
-          curr->lock.unlock();
-          break;
-        }
+			// We have found node
+			if (field == HERE) {
+				curr->lock.lock();
+				// If marked then break from first while loop and restart
+				if (curr->mark) {
+					curr->lock.unlock();
+					restart = true;
+					break;
+				}
 
-        return curr;
-      }
+				// Only executed if curr is not marked
+				return curr;
+			}
+		}
 
-      // update parent;
-      parent = curr;
-  
-      // traverse to next child
-      bool parentIsLarger = data < parent->getData();
-      curr = (parentIsLarger ? curr->getLeft() : curr->getRight());
-    }
+		if (restart == true) {
+			restart = false;
+			continue;
+		}
+		curr->lock.lock();
+		// grab snapshot
+		// check if restart is needed
+		bool goLeft = (data < curr->getData() ? true : false);
+		Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
+		if (curr->mark || (goLeft && (data <= snapShot->getData())) ||
+			(!goLeft && (data >= snapShot->getData()))) {
+			curr->lock.unlock();
+			continue;
+		}
 
-    if (restart == true) {
-      restart = false;
-      continue;
-    }
-
-    parent->lock.lock();
-    // grab snapshot
-    // check if restart is needed
-    bool goLeft = (data < parent->getData() ? true : false);
-    Node *snapShot = (goLeft? parent->leftSnap.load() : parent->rightSnap.load());
-    if (parent->mark || (goLeft && (data <= snapShot->getData()))||
-        (!goLeft &&(data >= snapShot->getData()))) {
-      parent->lock.unlock();
-      continue;
-    }
-    return parent;
-  }
+		return curr;
+	}
 }
 
 void BinarySearchTree::insert(int const &data) {
@@ -283,7 +281,8 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
 
       // if the snapshot has changed restart
       if ((hasRightChild && snapshot->rightSnap.load()!=curr) || 
-          (!hasRightChild && snapshot->leftSnap.load()!=curr)) {
+          (!hasRightChild && snapshot->leftSnap.load()!=curr) ||
+					snapshot->mark) {
 
         if (lockedSnap) snapshot->lock.unlock(); // Released in reverse locking order
         currChild->lock.unlock();
