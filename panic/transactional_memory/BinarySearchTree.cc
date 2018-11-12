@@ -10,6 +10,8 @@
 #include <queue>
 #include <stdio.h>
 #include <thread>
+#include <chrono>
+#include <cstdlib>
 
 const int MAXBF = 1;
 const int MINBF = -1;
@@ -66,16 +68,14 @@ void BinarySearchTree::updateSnaps(Node *node) {
 
   Node *parent = node->getParent();
   int field = nextField(parent, node->getData());
-  __transaction_atomic{
-	  if (field == LEFT){
-			(parent->leftSnap)->rightSnap = node;
-			parent->leftSnap = node;
-	  } else {
-			(parent->rightSnap)->leftSnap = node;
-			parent->rightSnap = node;
-	  }
-  }
-  
+	//TODO: Check if this needs an atomic surrounding this!
+	if (field == LEFT){
+		(parent->leftSnap)->rightSnap = node;
+		parent->leftSnap = node;
+	} else {
+		(parent->rightSnap)->leftSnap = node;
+		parent->rightSnap = node;
+	}
 }
 
 Node *BinarySearchTree::traverse(Node *node, int const &data) {
@@ -87,26 +87,29 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
     int field = nextField(curr, data);
 
     // traverse
-    while (curr->get(field)!=nullptr) {
-
-      curr = curr->get(field);
-
-      field = nextField(curr, data);
+    while (true) {
+			__transaction_atomic{
+				if (curr->get(field) == nullptr) {
+					break;
+				}
+				curr = curr->get(field);
+			}
+			field = nextField(curr, data);
 
       // We have found node
       if (field==HERE) {
 
-        // If marked then break from first while loop and restart
-        //curr->lock.lock();
-        if (curr->mark) {
-          restart = true;
-          //curr->lock.unlock();
-          break;
-        }
-
+				__transaction_atomic{
+					// If marked then break from first while loop and restart
+					if (curr->mark) {
+						restart = true;
+						break;
+					}
+				}
         // Only executed if curr is not marked
         return curr;
       }
+			
     }
 
     if (restart == true) {
@@ -114,20 +117,20 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
       continue;
     }
 
-    //curr->lock.lock();
-
     // grab snapshot
     // check if restart is needed
     bool goLeft = (data < curr->getData() ? true : false);
-		 
+		Node* snapShot;
 		__transaction_atomic{
-			Node* snapShot = (goLeft? curr->leftSnap : curr->rightSnap);
-			
-			if (curr->mark || (goLeft && (data < snapShot->getData())) ||
-					(!goLeft &&(data > snapShot->getData()))) {
-				//curr->lock.unlock();
+			if (curr->mark) {
 				continue;
 			}
+			snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
+		}
+
+		if ((goLeft && (data < snapShot->getData())) ||
+				(!goLeft && (data > snapShot->getData()))) {
+			continue;
 		}
     return curr;
   }
@@ -140,26 +143,23 @@ void BinarySearchTree::insert(int const &data) {
     Node *curr = traverse(root, data);
 		//Acts as a lock for the node
 		//Although it seems like it is currently locking the entire data structure down
-		__transaction_atomic {
-
-			// We have a duplicate
-			if (curr->getData()== data) {
-				//curr->lock.unlock();
-				return;
-			}
-    
-			// No longer a leaf node
+			
+		// We have a duplicate
+		if (curr->getData()== data) {
+			return;
+		}
+		__transaction_atomic{
+		// No longer a leaf node
 			if (
 				(data > curr->getData() && curr->getRight()!=nullptr) ||
 				(data < curr->getData() && curr->getLeft()!=nullptr)) {
-
-				//curr->lock.unlock();
 				continue;
 			}
 
 			Node *newNode = new Node(data);
 			newNode->setParent(curr);
 
+		
 			// Copy snaps from parent
 			bool parentIsLarger = data < curr->getData();
 			if (parentIsLarger) {
@@ -475,12 +475,12 @@ std::vector<Node *> init_list(int num) {
   return vector;
 }
 
-void doInserts(BinarySearchTree bst, int index){
-	int range;
-	int numberOfTestCases = 1000;
-	range = numberOfTestCases * (index + 1);
-	for (int i = numberOfTestCases * index; i < range; ++i) {
-		bst.insert(i);
+void doInserts(BinarySearchTree bst, int numberOfItems, int insertArray[]){
+	//int numberOfTestCases = 100;
+	//range = numberOfTestCases * (index + 1);
+	for (int i = 0; i < 30; ++i) {
+		
+		bst.insert(insertArray[i]);
 	}
 }
 
@@ -506,32 +506,46 @@ void doContains(BinarySearchTree bst) {
 int main() {
 
 	BinarySearchTree bst;
+
+	int numberOfThreads = 6, numberOfItems = 10;
+
+	int insertArray[6][30];
+	//Populating random number array
+	for (int i = 0; i < numberOfItems; ++i) {
+		insertArray[0][i] = std::rand() % 100;
+		insertArray[1][i] = std::rand() % 100;
+		insertArray[2][i] = std::rand() % 100;
+		insertArray[3][i] = std::rand() % 100;
+		insertArray[4][i] = std::rand() % 100;
+		insertArray[5][i] = std::rand() % 100;
+	}
+	
 	//*bst = new BinarySearchTree();
 
-	std::thread t1(doInserts, (BinarySearchTree)bst, 0);
-	std::thread t2(doInserts, (BinarySearchTree)bst, 1);
-	std::thread t3(doInserts, (BinarySearchTree)bst, 2);
-	std::thread t4(doInserts, (BinarySearchTree)bst, 3);
-	std::thread t5(doInserts, (BinarySearchTree)bst, 4);
-	std::thread t6(doInserts, (BinarySearchTree)bst, 5);
-	std::thread t7(doInserts, (BinarySearchTree)bst, 6);
-	std::thread t8(doInserts, (BinarySearchTree)bst, 7);
-	std::thread t9(doInserts, (BinarySearchTree)bst, 8);
-	
+	std::thread t1(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[0]);
+	std::thread t2(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[1]);
+	std::thread t3(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[2]);
+	std::thread t4(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[3]);
+	std::thread t5(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[4]);
+	std::thread t6(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[5]);
 	t1.join();
 	t2.join();
 	t3.join();
 	t4.join();
 	t5.join();
 	t6.join();
-	t7.join();
-	t8.join();
-	t9.join();
 
 	preOrderTraversal(bst);
-	inOrderTraversal(bst);
+	//inOrderTraversal(bst);
 	//printSnaps(bst);
 	printf("\n");
+
+	//Checking what is in the array at this time
+	for (int i = 0; i < 6; ++i) {
+		for (int j = 0; j < numberOfItems; ++j) {
+			std::cout << insertArray[i][j] << " " << std::endl;
+		}
+	}
 
 	return 0;
 }
