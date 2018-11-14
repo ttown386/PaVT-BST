@@ -10,8 +10,9 @@
 #include <queue>
 #include <stdio.h>
 #include <thread>
-#include <chrono>
+#include <random>
 #include <cstdlib>
+#include <sstream>
 
 const int MAXBF = 1;
 const int MINBF = -1;
@@ -85,15 +86,18 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
 
     Node *curr = node;
     int field = nextField(curr, data);
-
+	Node *next;
     // traverse
+	__transaction_atomic{
+		next = curr->get(field);
+	}
     while (true) {
 			__transaction_atomic{
-				if (curr->get(field) == nullptr) {
+				if (next == nullptr) {
 					break;
 				}
-				curr = curr->get(field);
 			}
+			curr = next;
 			field = nextField(curr, data);
 
       // We have found node
@@ -109,7 +113,9 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
         // Only executed if curr is not marked
         return curr;
       }
-			
+			__transaction_atomic{
+				next = curr->get(field);
+			}
     }
 
     if (restart == true) {
@@ -121,6 +127,7 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
     // check if restart is needed
     bool goLeft = (data < curr->getData() ? true : false);
 		Node* snapShot;
+		//Purposely separated from the normal implementation for better performance
 		__transaction_atomic{
 			if (curr->mark) {
 				continue;
@@ -149,7 +156,7 @@ void BinarySearchTree::insert(int const &data) {
 			return;
 		}
 		__transaction_atomic{
-		// No longer a leaf node
+			// No longer a leaf node
 			if (
 				(data > curr->getData() && curr->getRight()!=nullptr) ||
 				(data < curr->getData() && curr->getLeft()!=nullptr)) {
@@ -164,7 +171,7 @@ void BinarySearchTree::insert(int const &data) {
 			Node *snapshot = (parentIsLarger ? curr->leftSnap : curr->rightSnap);
 
 			if (parentIsLarger) {
-				newNode->leftSnap = curr->leftSnap;
+				newNode->leftSnap = snapshot;
 				newNode->rightSnap = curr;
 
 				snapshot->rightSnap = newNode;
@@ -173,77 +180,402 @@ void BinarySearchTree::insert(int const &data) {
 				curr->setLeft(newNode);
 			} else {
 				newNode->leftSnap = curr;
-				newNode->rightSnap = curr->rightSnap;
+				newNode->rightSnap = snapshot;
 
 				snapshot->leftSnap = newNode;
 				curr->rightSnap = newNode;
 
 				curr->setRight(newNode);
 			}
-    
-			// Add to path an update snaps
-			if (parentIsLarger) {
-				curr->setLeft(newNode);
-			} else {
-				curr->setRight(newNode);
-			}
 
-			// Perform AVL rotations if applicable
-			//if (isAvl){
-			// Update heights
-			//	updateHeights(curr);
-			//	rebalance(curr);
-			//}
+		}
+		// Perform AVL rotations if applicable
+		if (isAvl){
+			//Update heights
+			updateHeights(curr);
+			rebalance(curr);
 		}
   }
 }
 
-bool BinarySearchTree::contains(int const &data) {
-  bool restart = false;
-  while (true) {
+void BinarySearchTree::remove(int const &data, int &thread_id) {
 
-    Node *curr = root;
-    int field = nextField(curr, data);
+	Node *maxSnapNode;
+	Node *minSnapNode;
+	int id = thread_id;
+	// printf("Thread %d : \n", id);
+	while (true) {
+		Node *curr = traverse(root, data);
 
-    // traverse
-    while (curr->get(field)!=nullptr) {
-
-      curr = curr->get(field);
-
-      field = nextField(curr, data);
-
-      // We have found node
-      if (field==HERE) {
-
-        // If marked then break from first while loop and restart
-        if (curr->mark) {
-          restart = true;
-          break;
-        }
-
-        // Only executed if curr is not marked
-        return true;
-      }
-    }
-
-    if (restart == true) {
-      restart = false;
-      continue;
-    }
-
-    // grab snapshot
-    // check if restart is needed
-    bool goLeft = (data < curr->getData() ? true : false);
-		__transaction_atomic{
-			Node *snapShot = (goLeft? curr->leftSnap : curr->rightSnap);
-			if (curr->mark || (goLeft && (data < snapShot->getData()))||
-					(!goLeft &&(data > snapShot->getData()))) {
-				continue;
-			}
+		// Already checked snapshots so return if current
+		// node is not one to be deleted
+		if (curr->getData() != data) {
+			// std::cout<<"no node"<<std::endl;
+			//curr->lock.unlock();
+			return;
 		}
 
-    return false;
-  }
+		// printf("%d: 0\n", id);
+		// Lock all nodes
+		__transaction_atomic{
+			Node *parent = curr->getParent();
+			//if (!parent->lock.try_lock()) {
+			//	curr->lock.unlock();
+			//	continue;
+			//}
+
+			//Some other thread has gone and changed things around
+			//Got to check if we already got removed otherwise unlock restart
+			if (parent != curr->getParent()) {
+				//curr->lock.unlock();
+				//parent->lock.unlock();
+				if (curr->mark) {
+					return;
+				}
+				continue;
+			}
+
+			// printf("%d: 1\n", id);
+			/*  A leaf node */
+			Node *leftChild = curr->getLeft();
+			Node *rightChild = curr->getRight();
+			bool parentIsLarger = (parent->getData() > data ? true : false);
+
+			if (leftChild == nullptr && rightChild == nullptr) {
+
+				//One possible atmoic segment
+				maxSnapNode = curr->rightSnap;
+				minSnapNode = curr->leftSnap;
+				curr->mark = true;
+
+				if (parentIsLarger) {
+					parent->setLeft(nullptr);
+					parent->leftSnap = minSnapNode;
+					minSnapNode->rightSnap = parent;
+				}
+				else {
+					parent->setRight(nullptr);
+					parent->rightSnap = maxSnapNode;
+					maxSnapNode->leftSnap = parent;
+				}
+
+				//curr->lock.unlock();
+				//parent->lock.unlock();
+				return;
+			}
+
+			// printf("%d: 2\n", id);
+			//if (leftChild != nullptr) {
+				// std::cout<<id<<": leftChild :"<<leftChild->getData()<<"\n";
+				//leftChild->lock.lock();
+			//}
+			// printf("%d: 2a\n", id);
+			//if (rightChild != nullptr) {
+				// std::cout<<id<<": RightChild :"<<rightChild->getData()<<"\n";
+				//rightChild->lock.lock();
+			//}
+
+			// printf("%d: 3\n", id);
+			/* A node with at most 1 child */
+			if (leftChild == nullptr || rightChild == nullptr) {
+
+				bool hasRightChild = leftChild == nullptr;
+				Node *currChild = (hasRightChild) ? rightChild : leftChild;
+
+				//Another possible section
+				minSnapNode = curr->leftSnap;
+				maxSnapNode = curr->rightSnap;
+
+				Node *snapshot = (hasRightChild) ? maxSnapNode : minSnapNode;
+
+
+				// if the snapshot of curr is not its child then lock
+				// that node as its path can be altered
+				//bool lockedSnap = false;
+				//if (snapshot != currChild) {
+				//	snapshot->lock.lock();
+				//	lockedSnap = true;
+				//}
+
+				// if the snapshot has changed restart
+				// Atomic PlaceHolder
+				if ((hasRightChild && snapshot->leftSnap != curr) ||
+					(!hasRightChild && snapshot->rightSnap != curr) ||
+					snapshot->mark) {
+
+					//if (lockedSnap) snapshot->lock.unlock(); // Released in reverse locking order
+					//currChild->lock.unlock();
+					//curr->lock.unlock();
+					//parent->lock.unlock();
+					continue;
+				}
+				// Atomic PlaceHolder
+				curr->mark = true;
+				currChild = (hasRightChild) ? rightChild : leftChild;
+				if (parent->getLeft() == curr) {
+					parent->setLeft(currChild);
+				}
+				else {
+					parent->setRight(currChild);
+				}
+
+				currChild->setParent(parent);
+
+				// TODO: Update Snaps
+				minSnapNode->rightSnap = maxSnapNode;
+				maxSnapNode->leftSnap = minSnapNode;
+
+				// TODO: Unlock all
+				//if (lockedSnap) snapshot->lock.unlock(); // Released in reverse locking order
+				//currChild->lock.unlock();
+				//curr->lock.unlock();
+				//parent->lock.unlock();
+
+				// delete curr;
+				return;
+			}
+
+			/* Hard Cases */
+			minSnapNode = curr->leftSnap;
+			maxSnapNode = curr->rightSnap;
+
+			// printf("%d: 4\n", id);
+			//bool lockedPred = false;
+			//if (minSnapNode != leftChild) {
+			//	minSnapNode->lock.lock();
+			//	lockedPred = true;
+			//}
+			if (minSnapNode->rightSnap != curr || minSnapNode->mark) {
+				//if (lockedPred) minSnapNode->lock.unlock();
+				//rightChild->lock.unlock();
+				//leftChild->lock.unlock();
+				//curr->lock.unlock();
+				//parent->lock.unlock();
+				continue;
+			}
+
+			// std::cout<<id<<": predecessor :"<<minSnapNode->getData()<<"\n";
+			// printf("%d: 5\n", id);
+			/* Node with where the right child's left node is null */
+			// Atomic PlaceHolder
+			if (rightChild->getLeft() == nullptr) {
+				curr->mark = true;
+
+				rightChild->setLeft(leftChild);
+				leftChild->setParent(rightChild);
+				rightChild->setParent(parent);
+
+				if (parent->getLeft() == curr) {
+					parent->setLeft(rightChild);
+				}
+				else {
+					parent->setRight(rightChild);
+				}
+
+				// TODO: update snaps
+				minSnapNode->rightSnap = maxSnapNode;
+				maxSnapNode->leftSnap = minSnapNode;
+				// TODO: Unlock all
+				//if (lockedPred) minSnapNode->lock.unlock();
+				//rightChild->lock.unlock();
+				//leftChild->lock.unlock();
+				//curr->lock.unlock();
+				//parent->lock.unlock();
+
+				return;
+			}
+
+			// Atomic PlaceHolder
+			Node *succ = maxSnapNode;
+			Node *succParent = succ->getParent();
+
+			// printf("%d: 6\n", id);
+			bool lockedSuccParent = false;
+
+			if (succParent != rightChild) {
+
+				//succParent->lock.lock();
+				// Atomic PlaceHolder
+				if (maxSnapNode->getParent() != succParent || maxSnapNode->mark) {
+					//succParent->lock.unlock();
+					//if (lockedPred) minSnapNode->lock.unlock();
+					//rightChild->lock.unlock();
+					//leftChild->lock.unlock();
+					//curr->lock.unlock();
+					//parent->lock.unlock();
+					continue;
+				}
+
+				lockedSuccParent = true;
+			}
+
+			// printf("%d: 7\n", id);
+			//succ->lock.lock();
+			// Atomic PlaceHolder
+			if (maxSnapNode->leftSnap != curr || maxSnapNode->mark) {
+				//succ->lock.unlock();
+				//if (lockedSuccParent) succParent->lock.unlock();
+				//if (lockedPred) minSnapNode->lock.unlock();
+				//rightChild->lock.unlock();
+				//leftChild->lock.unlock();
+				//curr->lock.unlock();
+				//parent->lock.unlock();
+				continue;
+			}
+
+			// std::cout<<id<<": succParent :"<<succParent->getData()<<"\n";
+			// printf("%d: 8\n", id);
+			bool lockedSuccRightSnap = false;
+			bool lockedSuccRightChild = false;
+
+			// Atomic PlaceHolder
+			Node *succRightChild = succ->getRight();
+			Node *succRightSnapshot = succ->rightSnap;
+
+			// Atomic PlaceHolder
+			if (succRightChild != nullptr) {
+
+				// printf("%d: 9\n", id);
+				//succRightChild->lock.lock();
+				lockedSuccRightChild = true;
+
+				// printf("%d: 10\n", id);
+				succRightSnapshot = succ->rightSnap;
+				if (succRightSnapshot != succRightChild) {
+					//succRightSnapshot->lock.lock();
+					lockedSuccRightSnap = true;
+				}
+
+				// printf("%d: 11\n", id);
+				if (succRightSnapshot->leftSnap != succ || succRightSnapshot->mark) {
+
+					// Unlock all
+					//if (lockedSuccRightSnap) succRightSnapshot->lock.unlock();
+					//if (lockedSuccRightChild) succRightChild->lock.unlock();
+					//succ->lock.unlock();
+					//if (lockedSuccParent) succParent->lock.unlock();
+					//if (lockedPred) minSnapNode->lock.unlock();
+					//rightChild->lock.unlock();
+					//leftChild->lock.unlock();
+					//curr->lock.unlock();
+					//parent->lock.unlock();
+					continue;
+				}
+			}
+			// printf("%d: 12\n", id);
+			// Mark the node
+			// Atomic PlaceHolder
+			curr->mark = true;
+
+			succ->setRight(rightChild);
+			rightChild->setParent(succ);
+
+			succ->setLeft(leftChild);
+			leftChild->setParent(succ);
+
+			succ->setParent(parent);
+
+			// Atomic PlaceHolder
+			if (parentIsLarger) {
+				parent->setLeft(succ);
+			}
+			else {
+				parent->setRight(succ);
+			}
+			// Atomic PlaceHolder
+			succParent->setLeft(succRightChild);
+			// Atomic PlaceHolder
+			if (succRightChild != nullptr)
+				succRightChild->setParent(succParent);
+
+			// Atomic PlaceHolder
+			// Update Snaps
+			succ->rightSnap = succRightSnapshot;
+			succRightSnapshot->leftSnap = succ;
+			// Atomic PlaceHolder
+			succ->leftSnap = minSnapNode;
+			minSnapNode->rightSnap = succ;
+
+			// Unlock All
+			//if (lockedSuccRightSnap) succRightSnapshot->lock.unlock();
+			//if (lockedSuccRightChild) succRightChild->lock.unlock();
+			//succ->lock.unlock();
+			//if (lockedSuccParent) succParent->lock.unlock();
+			//if (lockedPred) minSnapNode->lock.unlock();
+			//rightChild->lock.unlock();
+			//leftChild->lock.unlock();
+			//curr->lock.unlock();
+			//parent->lock.unlock();
+
+			return;
+		}
+	}
+}
+
+bool BinarySearchTree::contains(int const &data) {
+
+	bool restart = false;
+	while (true) {
+		Node *curr;
+		__transaction_atomic{
+			curr = root;
+		}
+		int field = nextField(curr, data);
+		Node *next;
+		// traverse
+		__transaction_atomic{
+			next = curr->get(field);
+		}
+			while (true) {
+				__transaction_atomic{
+					if (next == nullptr) {
+						break;
+					}
+				}
+				curr = next;
+				field = nextField(curr, data);
+
+				// We have found node
+				if (field == HERE) {
+
+					__transaction_atomic{
+						// If marked then break from first while loop and restart
+						if (curr->mark) {
+							restart = true;
+							break;
+						}
+					}
+						// Only executed if curr is not marked
+					return curr;
+				}
+				__transaction_atomic{
+					next = curr->get(field);
+				}
+			}
+
+		if (restart == true) {
+			restart = true;
+			continue;
+		}
+
+		// grab snapshot
+		// check if restart is needed
+		bool goLeft = (data < curr->getData() ? true : false);
+		Node* snapShot;
+		//Purposely separated from the normal implementation for better performance
+		__transaction_atomic{
+			if (curr->mark) {
+				continue;
+			}
+		snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
+		}
+
+			if ((goLeft && (data < snapShot->getData())) ||
+				(!goLeft && (data > snapShot->getData()))) {
+				continue;
+			}
+		return false;
+	}
 }
 
 void BinarySearchTree::updateHeights(Node *curr) {
@@ -435,6 +767,7 @@ void inOrderTraversal(BinarySearchTree &bst) {
   }
   std::cout<<std::endl;
 }
+
 void preOrderTraversal(BinarySearchTree &bst) {
 
   std::stack<Node*> stack;
@@ -474,15 +807,6 @@ void printSnaps(BinarySearchTree bst) {
   }
 }
 
-std::vector<Node *> init_list(int num) {
-  std::vector<Node *> vector;
-  for (int i=0; i<num; i++) {
-    Node *n = new Node(i);
-    vector.push_back(n);
-  }
-  return vector;
-}
-
 void doInserts(BinarySearchTree bst, int numberOfItems, int insertArray[]){
 	//int numberOfTestCases = 100;
 	//range = numberOfTestCases * (index + 1);
@@ -509,51 +833,84 @@ void doContains(BinarySearchTree bst) {
 	}
 }
 
-
-
-int main() {
-
-	BinarySearchTree bst;
-
-	int numberOfThreads = 6, numberOfItems = 10000;
-
-	int insertArray[6][10000];
-	//Populating random number array
-	for (int i = 0; i < numberOfItems; ++i) {
-		insertArray[0][i] = std::rand() % numberOfItems;
-		insertArray[1][i] = std::rand() % numberOfItems;
-		insertArray[2][i] = std::rand() % numberOfItems;
-		insertArray[3][i] = std::rand() % numberOfItems;
-		insertArray[4][i] = std::rand() % numberOfItems;
-		insertArray[5][i] = std::rand() % numberOfItems;
+std::vector<int> init_list_ints(int num) {
+	std::vector<int> vector;
+	for (int i = 0; i<num; i++) {
+		vector.push_back(i);
 	}
-	
-	//*bst = new BinarySearchTree();
+	auto rng = std::default_random_engine{};
+	std::shuffle(std::begin(vector), std::end(vector), rng);
+	return vector;
+}
 
-	std::thread t1(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[0]);
-	std::thread t2(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[1]);
-	std::thread t3(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[2]);
-	std::thread t4(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[3]);
-	std::thread t5(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[4]);
-	std::thread t6(doInserts, (BinarySearchTree)bst, numberOfItems, insertArray[5]);
-	t1.join();
-	t2.join();
-	t3.join();
-	t4.join();
-	t5.join();
-	t6.join();
+std::vector<Node *> init_list(int num) {
+	std::vector<Node *> vector;
+	for (int i = 0; i<num; i++) {
+		Node *n = new Node(i);
+		vector.push_back(n);
+	}
+	auto rng = std::default_random_engine{};
+	std::shuffle(std::begin(vector), std::end(vector), rng);
+	return vector;
+}
 
-	//preOrderTraversal(bst);
-	//inOrderTraversal(bst);
-	//printSnaps(bst);
+bool check(BinarySearchTree bst) {
+	Node *curr = bst.minSentinel;
+	int currVal = curr->getData();
+	while (curr != bst.maxSentinel) {
+		curr = curr->rightSnap;
+		int nextVal = curr->getData();
+		if (nextVal <= currVal) return false;
+		currVal = nextVal;
+	}
+
+	return true;
+}
+
+void routine_1(BinarySearchTree &bst, int id, int n_threads,
+	std::vector<int> keys) {
+
+	int count = 0;
+	for (int i = 1 * id; i<keys.size(); i += n_threads) {
+		// printf("Thread %d: insert #%d\n", id, count);
+		bst.insert(keys.at(i));
+		// count++;
+	}
+	// std::cout<<"Check "<<check(bst)<<"!"<<std::endl;
+	// bst.remove(-10, id);
+	int increment = n_threads;
+	for (int i = 1 * id; i<keys.size() / 2; i++) {
+		// std::cout<<i<<std::endl;
+		bst.remove(keys.at(i), id);
+		// printf("Thread %d: remove #%d\n", id, count);
+		// count++;
+	}
+}
+
+int main(int argc, char **argv) {
+
+	std::cout << "here" << std::endl;
+	if (argc != 2) {
+		std::cout << "Please enter correct number of arguments!" << std::endl;
+		return -1;
+	}
+
+	int n_threads = std::atoi(argv[1]);
+	std::thread threads[n_threads];
+
+	std::vector<int> keys = init_list_ints(200000);
+	BinarySearchTree bst = BinarySearchTree();
+	for (int i = 0; i<n_threads; i++) {
+		threads[i] = std::thread(routine_1, std::ref(bst), i, n_threads, std::ref(keys));
+	}
+	for (int i = 0; i<n_threads; i++) {
+		threads[i].join();
+	}
+	printf("Preorder :");
+	preOrderTraversal(bst);
+	printf("Inorder :");
+	inOrderTraversal(bst);
+	printf("Snaps: \n");
+	printSnaps(bst);
 	printf("\n");
-
-	//Checking what is in the array at this time
-	//for (int i = 0; i < 6; ++i) {
-	//	for (int j = 0; j < numberOfItems; ++j) {
-	//		std::cout << insertArray[i][j] << " " << std::endl;
-	//	}
-	//}
-
-	return 0;
 }

@@ -30,7 +30,7 @@ class BinarySearchTree {
   BinarySearchTree(bool isAvl=false);
   ~BinarySearchTree();
   void insert(int const& data);
-  void remove(int const& data);
+  void remove(int const& data, int &id);
   bool contains(int const& data);
   Node *getRoot();
 
