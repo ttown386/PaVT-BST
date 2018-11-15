@@ -255,6 +255,8 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
 
       curr->lock.unlock();
       parent->lock.unlock();
+
+      if (isAvl) rebalance(parent);
       return;
     }
 
@@ -322,7 +324,7 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
       curr->lock.unlock();
       parent->lock.unlock();
 
-      // delete curr;
+      if (isAvl) rebalance(parent);
       return;
     }
 
@@ -371,8 +373,12 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
       curr->lock.unlock();
       parent->lock.unlock();
       
+      if (isAvl) rebalance(rightChild);
+
       return;
     }
+
+    /* Hardest Case */
 
     Node *succ = maxSnapNode;
     Node *succParent = succ->getParent();
@@ -488,6 +494,11 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
     leftChild->lock.unlock();
     curr->lock.unlock();
     parent->lock.unlock();
+
+    if (isAvl) {
+      rebalanceSynchronized(succ);
+      rebalanceSynchronized(succParent);
+    } 
 
     return;
   }
