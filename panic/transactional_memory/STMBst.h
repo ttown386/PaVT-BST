@@ -3,12 +3,12 @@
 // Created by ttown on 9/30/2018.
 //
 
-#ifndef CONCURRENTTREETRAVERALS_BINARYSEARCHTREE_H
-#define CONCURRENTTREETRAVERALS_BINARYSEARCHTREE_H
+#ifndef CONCURRENTTREETRAVERALS_STMBST_H
+#define CONCURRENTTREETRAVERALS_STMBST_H
 
 #include "Node.h"
 
-class BinarySearchTree {
+class STMBst {
  public:
 // private:
   bool isAvl;
@@ -27,8 +27,8 @@ class BinarySearchTree {
   void updateSnaps(Node *start, Node *toUpdate, Node *parent);
 
 // public:
-  BinarySearchTree(bool isAvl=false);
-  ~BinarySearchTree();
+	STMBst(bool isAvl=false);
+  ~STMBst();
   void insert(int const& data);
   void remove(int const& data, int &id);
   bool contains(int const& data);
