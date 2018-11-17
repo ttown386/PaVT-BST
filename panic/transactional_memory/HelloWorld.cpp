@@ -11,7 +11,7 @@ struct node{
 
 std::atomic<node*> head;
 //node* head;
-
+/*
 void printWorld()
 {
 	
@@ -35,17 +35,30 @@ void printWorld()
 		std::cout << "Output is " << output << std::endl;
 	}
 }
+*/
 
 int main()
 {
-	head = new node();
-	head->weight = 0;
-	std::thread t1(printWorld);
-	std::thread t2(printWorld);
-	std::thread t3(printWorld);
+	//head = new node();
+	//head->weight = 0;
+	//std::thread t1(printWorld);
+	//std::thread t2(printWorld);
+	//std::thread t3(printWorld);
 
-	t1.join();
-	t2.join();
-	t3.join();
+	//t1.join();
+	//t2.join();
+	//t3.join();
+
+	while (true) {
+		int i = 1;
+		std::cout << "Number is: " << i << std::endl;
+		__transaction_atomic{
+			continue;
+			i = 2;
+		}
+		i = 4;
+		std::cout << "Number is: " << i << std::endl;
+	}
+
 	return 0;
 }
