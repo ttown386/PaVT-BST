@@ -13,6 +13,9 @@
 #include <random>
 #include <algorithm>
 #include <sstream>
+#include <chrono>
+#include <cstdlib>
+#include <ctime>
 
 const int MAXBF = 1;
 const int MINBF = -1;
@@ -47,6 +50,7 @@ BinarySearchTree::BinarySearchTree(bool isAvl) {
 
 BinarySearchTree::~BinarySearchTree() {
 //  delete root;
+  delete minSentinel;
 }
 
 Node *BinarySearchTree::getRoot() {
@@ -195,11 +199,10 @@ void BinarySearchTree::insert(int const &data) {
   }
 }
 
-void BinarySearchTree::remove(int const &data, int &thread_id) {
+void BinarySearchTree::remove(int const &data) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
-  int id = thread_id;
   // printf("Thread %d : \n", id);
   while (true) {
     Node *curr = traverse(root, data);
@@ -496,8 +499,8 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
     parent->lock.unlock();
 
     if (isAvl) {
-      rebalanceSynchronized(succ);
-      rebalanceSynchronized(succParent);
+      rebalance(succ);
+      rebalance(succParent);
     } 
 
     return;
@@ -653,6 +656,7 @@ void BinarySearchTree::rebalance(Node *node) {
   while(node!=root) {
 
     // lock parent
+    // std::cout<<"a\n";
     parent->lock.lock();
     if (node->getParent()!=parent) {
       parent->lock.unlock();
@@ -663,8 +667,12 @@ void BinarySearchTree::rebalance(Node *node) {
       parent = node->getParent();
       continue;
     }
+    // std::cout<<"b\n";
 
     // lock node
+    // std::cout<<"c\n";
+    node->lock.lock();
+    // std::cout<<"d\n";
     if (node->mark) {
       node->lock.unlock();
       parent->lock.unlock();
@@ -693,7 +701,9 @@ void BinarySearchTree::rebalance(Node *node) {
     // The node's right subtree is too tall
     if (bf < MINBF) {
       child = right;
+      // std::cout<<"1\n";
       child->lock.lock();
+      // std::cout<<"2\n";
 
       Node *childLeft = child->getLeft();
       Node *childRight = child->getRight();
@@ -706,7 +716,9 @@ void BinarySearchTree::rebalance(Node *node) {
       Node *grandChild = childLeft;
 
       if (childBf > 0) {
+        // std::cout<<"3\n";
         grandChild->lock.lock();
+        // std::cout<<"4\n";
         rotateRight(grandChild, child, node);
         rotateLeft(grandChild, node, parent);
         child->lock.unlock();
@@ -728,7 +740,10 @@ void BinarySearchTree::rebalance(Node *node) {
       // The node's left subtree is too tall
     } else if (bf > MAXBF) {
       child = left;
-      child->lock.unlock();
+      // std::cout<<"1\n";
+      // std::cout<<"5\n"; 
+      child->lock.lock();
+      // std::cout<<"6\n"; 
 
       Node *childLeft = child->getLeft();
       Node *childRight = child->getRight();
@@ -741,8 +756,9 @@ void BinarySearchTree::rebalance(Node *node) {
       Node *grandChild = childRight;
 
       if (childBf < 0) {
-
+        // std::cout<<"7\n";
         grandChild->lock.lock();
+        // std::cout<<"8\n";
         rotateLeft(grandChild, child, node);
         rotateRight(grandChild, node, parent);
         node->lock.unlock();
@@ -758,6 +774,8 @@ void BinarySearchTree::rebalance(Node *node) {
         node->lock.unlock();
         child->lock.unlock();
         parent->lock.unlock();
+
+        node = child;
       }
 
     } else {
@@ -878,7 +896,7 @@ void routine_1(BinarySearchTree &bst, int id, int n_threads,
   int count = 0;
   for (int i=1*id; i<keys.size(); i+=n_threads) {
     // printf("Thread %d: insert #%d\n", id, count);
-    bst.insert(i);
+    bst.insert(keys.at(i));
     // count++;
   }
   // std::cout<<"Check "<<check(bst)<<"!"<<std::endl;
@@ -886,38 +904,80 @@ void routine_1(BinarySearchTree &bst, int id, int n_threads,
   int increment = n_threads;
   for (int i=1*id; i<keys.size(); i++) {
     // std::cout<<i<<std::endl;
-    // bst.remove(keys.at(i), id);
+    // printf("here\n");
+    bst.remove(keys.at(i));
     // printf("Thread %d: remove #%d\n", id, count);
     // count++;
   }
 }
 
+void routine_4(BinarySearchTree &bst, int id, int n_threads, std::vector<int> keys, std::vector<int> ops) {
+
+  int count = 0;
+  int add = id;
+  int rem = id;
+  int cont = id;
+  for (int i=0; i<ops.size(); i++) {
+    if (ops.at(i)==0) {
+      bst.insert(keys.at(add));
+      add+=n_threads;
+    } else if (ops.at(i) == 1) {
+      bst.remove(keys.at(rem));
+      rem+=n_threads;
+    } else {
+      bst.contains(keys.at(cont));
+      rem+=n_threads;
+    }
+  }
+}
+
+std::vector<int> init_ops(int max, int add, int rem, int cont) {
+  std::vector<int> ops;
+  for (int i=0; i<add; i++) {
+    ops.push_back(0);
+  }
+  for (int i=0; i<rem; i++) {
+    ops.push_back(1);
+  }
+  for (int i=0; i<cont; i++) {
+    ops.push_back(2);
+  }
+  auto rng = std::default_random_engine {};
+  std::shuffle(std::begin(ops), std::end(ops), rng);
+  return ops;
+}
+
 
 int main(int argc, char **argv) {
   
-  if (argc!=2) {
+  if (argc!=6) {
     std::cout<<"Please enter correct number of arguments!"<<std::endl;
     return -1;
   }
   
   int n_threads = std::atoi(argv[1]);
   std::thread threads[n_threads];
-  
-  std::mutex lock;
+  int total = std::atoi(argv[2])/n_threads;
+  int add = std::atoi(argv[3]);
+  int rem = std::atoi(argv[4]);
+  int cont = std::atoi(argv[5]);
 
-  std::vector<int> keys = init_list_ints(20);
-  BinarySearchTree bst = BinarySearchTree(true);
-  for (int i=0; i<n_threads; i++) {
-    threads[i] = std::thread(routine_1, std::ref(bst), i, n_threads, std::ref(keys));  
+  std::vector<int> keys = init_list_ints(total*n_threads);
+  std::vector<int> ops = init_ops(total, total*add/100, total*rem/100, total*cont/100);
+  
+  for (int j=0; j<10; j++) {
+    BinarySearchTree *bst = new BinarySearchTree(true);
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+    for (int i=0; i<n_threads; i++) {
+      threads[i] = std::thread(routine_4, std::ref(*bst), i, n_threads, std::ref(keys), std::ref(ops));  
+    }
+    for (int i=0; i<n_threads; i++) {
+      threads[i].join();
+    }
+    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> time_span = t2 - t1;
+
+    std::cout<<time_span.count()<<std::endl;
+    delete bst;
   }
-  for (int i=0; i<n_threads; i++) {
-    threads[i].join();
-  }
-  printf("Preorder :");
-  preOrderTraversal(bst);
-  printf("Inorder :");
-  inOrderTraversal(bst);
-  printf("Snaps: \n");
-  printSnaps(bst);
-  printf("\n");
 }

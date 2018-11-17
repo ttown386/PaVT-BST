@@ -16,11 +16,9 @@ class BinarySearchTree {
   Node *maxSentinel;
   Node *minSentinel;
   int nextField(Node *node, int const &data);
-  void updateHeights(Node *curr);
-  Node *rotateLeft(Node *node);
-  Node *rotateRight(Node *node);
+  void rotateLeft(Node *child, Node *node, Node *parent);
+  void rotateRight(Node *child, Node *node, Node *parent);
   int height(Node *node);
-  int balanceFactor(Node *node);
   void rebalance(Node *node);
   Node *traverse(Node *node, int const &data);
   void updateSnaps(Node *node);
@@ -30,7 +28,7 @@ class BinarySearchTree {
   BinarySearchTree(bool isAvl=false);
   ~BinarySearchTree();
   void insert(int const& data);
-  void remove(int const& data, int &id);
+  void remove(int const& data);
   bool contains(int const& data);
   Node *getRoot();
 
