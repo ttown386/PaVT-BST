@@ -91,3 +91,7 @@ src/serial/.idea/serial.iml
 .idea/codeStyles/codeStyleConfig.xml
 .idea/codeStyles/Project.xml
 .idea/codeStyles/codeStyleConfig.xml
+
+# executables
+*.out
+*.exe*
