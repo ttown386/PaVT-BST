@@ -16,8 +16,8 @@ Node::Node(int const& data) {
 }
 
 Node::~Node() {
-//  if (getLeft()!=nullptr) delete getLeft();
-//  if (getRight()!=nullptr) delete getRight();
+  if (getLeft()!=nullptr) delete getLeft();
+  if (getRight()!=nullptr) delete getRight();
 }
 
 int Node::getData(){
