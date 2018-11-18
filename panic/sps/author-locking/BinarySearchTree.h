@@ -15,12 +15,8 @@ class BinarySearchTree {
   Node *root;
   Node *maxSentinel;
   Node *minSentinel;
-  void updateHeights(Node *curr);
-  Node *rotateLeft(Node *node);
-  Node *rotateRight(Node *node);
-  int height(Node *node);
-  int balanceFactor(Node *node);
-  void rebalance(Node *node);
+  void rebalanceSynchronized(Node *node);
+  void rotate(Node *child, Node *node, Node *parent, bool left);
   Node *traverse(Node *node, int const &data);
   void updateSnaps(Node *node);
   void updateSnaps(Node *start, Node *toUpdate, Node *parent);

@@ -13,6 +13,7 @@
 #include <random>
 #include <algorithm>
 #include <sstream>
+#include <cstdlib>
 
 const int MAXBF = 1;
 const int MINBF = -1;
@@ -53,55 +54,6 @@ Node *BinarySearchTree::getRoot() {
   return root;
 }
 
-Node *BinarySearchTree::traverse(Node *node, int const &data) {
-
-  bool restart = false;
-
-  while (true) {
-
-    Node *curr = node;
-    Node *parent = node->getParent();
-
-    // traverse
-    while (curr != nullptr) {
-
-      if (curr->getData() == data) {
-        curr->lock.lock();
-        if (curr->mark) {
-          restart = true;
-          curr->lock.unlock();
-          break;
-        }
-
-        return curr;
-      }
-
-      // update parent;
-      parent = curr;
-  
-      // traverse to next child
-      bool parentIsLarger = data < parent->getData();
-      curr = (parentIsLarger ? curr->getLeft() : curr->getRight());
-    }
-
-    if (restart == true) {
-      restart = false;
-      continue;
-    }
-
-    parent->lock.lock();
-    // grab snapshot
-    // check if restart is needed
-    bool goLeft = (data < parent->getData() ? true : false);
-    Node *snapShot = (goLeft? parent->leftSnap.load() : parent->rightSnap.load());
-    if (parent->mark || (goLeft && (data <= snapShot->getData()))||
-        (!goLeft &&(data >= snapShot->getData()))) {
-      parent->lock.unlock();
-      continue;
-    }
-    return parent;
-  }
-}
 
 void BinarySearchTree::insert(int const &data) {
 
@@ -166,15 +118,13 @@ void BinarySearchTree::insert(int const &data) {
       curr->setRight(newNode);
     }
 
+        // Unlock
+    curr->lock.unlock();
     // Perform AVL rotations if applicable
     if (isAvl){
-      // Update heights
-      updateHeights(curr);
-      rebalance(curr);
+      // std::cout<<"rotating "<<curr->getData()<<std::endl;
+      rebalanceSynchronized(curr);
     }
-
-    // Unlock
-    curr->lock.unlock();
   }
 }
 
@@ -250,6 +200,8 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
       }
       node->lock.unlock();
       parent->lock.unlock();
+
+      if (isAvl) rebalanceSynchronized(parent);
       return;
 
       /* A node with at most 1 child */ 
@@ -301,7 +253,8 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
       node->lock.unlock();
       parent->lock.unlock();
 
-      // delete node;
+      if (isAvl) rebalanceSynchronized(parent);
+
       return;
     } else {
 
@@ -350,7 +303,9 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
         left->lock.unlock();
         node->lock.unlock();
         parent->lock.unlock();
-          
+        
+        if (isAvl) rebalanceSynchronized(right);
+
         return;
       } else {
 
@@ -421,6 +376,12 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
             left->lock.unlock();
             node->lock.unlock();
             parent->lock.unlock();
+
+            if (isAvl) {
+              rebalanceSynchronized(succ);
+              rebalanceSynchronized(succParent);
+            }            
+
             return;
 
           } else {
@@ -433,6 +394,12 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
             left->lock.unlock();
             node->lock.unlock();
             parent->lock.unlock();
+
+            if (isAvl) {
+              rebalanceSynchronized(succ);
+              rebalanceSynchronized(succParent);
+            }
+
             return;
           }
         } else {
@@ -445,6 +412,12 @@ void BinarySearchTree::remove(int const &data, int &thread_id) {
           left->lock.unlock();
           node->lock.unlock();
           parent->lock.unlock();
+
+          if (isAvl) {
+            rebalanceSynchronized(succ);
+            rebalanceSynchronized(succParent);
+          }
+
           return;
         }
       }
@@ -489,165 +462,168 @@ void BinarySearchTree::applyRemove(Node *rightNode,
   rightNode->rightSnap = succ;
 }
 
-void BinarySearchTree::updateHeights(Node *curr) {
-
-  // Get a copy of curr to not lose its reference in
-  // other calls
-  Node *temp = curr;
-
-  while (!temp->sentinel) {
-    // update height of the subtree rooted here
-    Node *left = temp->getLeft();
-    Node *right = temp->getRight();
-    int maxSubHeight = std::max(height(left), height(right));
-    temp->setHeight(1 + maxSubHeight);
-
-    // go to the next parent
-    temp = temp->getParent();
+void BinarySearchTree::rebalanceSynchronized(Node *node) {
+  if (node==root) {
+    return;
   }
-}
+  Node *parent = node->getParent();
 
-Node *BinarySearchTree::rotateLeft(Node *node) {
+  while (node!=root) {
 
-  // Grab the nodes right child
-  Node *newRoot = node->getRight();
+    parent->lock.lock();
+    if (node->getParent()!=parent) {
+      parent->lock.unlock();
+      if (node->mark) {
+        return;
+      }
+      parent = node->getParent();
+      continue;
+    }
 
-  // Give node the left child of the rotated node since the
-  // key is greater than node
-  Node *temp = newRoot->getLeft();
-  node->setRight(temp);
+    node->lock.lock();
+    if (node->mark) {
+      node->lock.unlock();
+      parent->lock.unlock();
+      return;
+    }
 
-  // The node's right child (temp) now moves up to take the place of
-  // node
-  newRoot->setLeft(node);
+    Node *left = node->getLeft();
+    Node *right = node->getRight();
 
-  // Update parents
-  if(temp!=nullptr) temp->setParent(node);
+    int leftHeight = left == nullptr ? 0 : left->getHeight();
+    int rightHeight = right == nullptr ? 0 : right->getHeight();
+    int newHeight = std::max(leftHeight, rightHeight) + 1;
+    int oldHeight = node->getHeight();
+    int bf = leftHeight - rightHeight;
+    if (newHeight != oldHeight) {
+      node->setHeight(newHeight);
+    } else if (std::abs(bf) <= 2) {
+      node->lock.unlock();
+      parent->lock.unlock();
+      return;
+    }
 
-  Node *rootParent = node->getParent();
-  if (rootParent!=nullptr) {
-    if (rootParent->getRight() == node) {
-      rootParent->setRight(newRoot);
+    Node *child = bf >= 2 ? left : bf <= -2 ? right : nullptr;
+    bool isLeft = bf >= 2;
+    if (std::abs(bf)>=2) {
+      if (child != nullptr) {
+        child->lock.lock();
+        left = child->getLeft();
+        right = child->getRight();
+        leftHeight = left == nullptr ? 0 : left->getHeight();
+        rightHeight = right == nullptr ? 0 : right->getHeight();
+
+        if ((isLeft && (leftHeight - rightHeight) < 0) ||
+            (!isLeft && (leftHeight - rightHeight) > 0)) {
+
+          Node *grandChild = isLeft ? child->getRight() : child->getLeft();
+          grandChild->lock.lock();
+          std::cout<<"before\n";
+          std::cout<<"gc "<<grandChild->getData()<<" -> "<<grandChild->getParent()->getData()<<"\n";
+          std::cout<<"c "<<child->getData()<<" -> "<<child->getParent()->getData()<<"\n";
+          std::cout<<"n "<<node->getData()<<" -> "<<node->getParent()->getData()<<"\n";
+          std::cout<<"p "<<parent->getData()<<" -> "<<parent->getParent()->getData()<<"\n";
+          
+          rotate(grandChild, child, node, isLeft);
+          rotate(grandChild, node, parent, !isLeft);
+          std::cout<<"after\n";
+          std::cout<<"gc "<<grandChild->getData()<<" -> "<<grandChild->getParent()->getData()<<"\n";
+          std::cout<<"n "<<node->getData()<<" -> "<<node->getParent()->getData()<<"\n";
+          std::cout<<"c "<<child->getData()<<" -> "<<child->getParent()->getData()<<"\n";
+          std::cout<<"p "<<parent->getData()<<" -> "<<parent->getParent()->getData()<<"\n";
+
+          grandChild->lock.unlock();
+          node->lock.unlock();
+          child->lock.unlock();
+          parent->lock.unlock();
+
+          node = grandChild;
+
+        } else {
+
+          rotate(child, node, parent, !isLeft);
+
+          node->lock.unlock();
+          child->lock.unlock();
+          parent->lock.unlock();
+
+          node = child;
+        }
+      }
     } else {
-      rootParent->setLeft(newRoot);
+
+      node->lock.unlock();
+      parent->lock.unlock();
+
+      // TODO: Check if traversing after unlocks causes sync issues
+      // Needs to be done or you lose locks, and helps preserve locking
+      // order
+      node = parent;
+      parent = node->getParent();
     }
   }
-  newRoot->setParent(rootParent);
-  node->setParent(newRoot);
-
-  // Update the tree heights
-  int leftHeight = height(node->getLeft());
-  int rightHeight = height(node->getRight());
-  node->setHeight(1 + std::max(leftHeight, rightHeight));
-
-  int newRootLeftHeight = height(newRoot->getLeft());
-  int newRootRightHeight = height(newRoot->getRight());
-  newRoot->setHeight(1 + std::max(newRootLeftHeight, newRootRightHeight));
-
-  return newRoot;
 }
 
-Node *BinarySearchTree::rotateRight(Node *node) {
+void BinarySearchTree::rotate(Node *child, Node *node, Node *parent, bool left) {
 
-  // Grab the nodes left child
-  Node* newRoot = node->getLeft();
-
-  // Give node the left child of newRoot since the key
-  // is less than node
-  Node *temp = newRoot->getRight();
-  node->setLeft(temp);
-
-  // The new Root moves up to take the place of node
-  // Now set newNodes right pointer to node
-  newRoot->setRight(node);
-
-  // Update parents
-  if(temp!=nullptr) temp->setParent(node);
-
-  Node *rootParent = node->getParent();
-  if (rootParent!=nullptr) {
-    if (rootParent->getRight() == node) {
-      rootParent->setRight(newRoot);
-    } else {
-      rootParent->setLeft(newRoot);
-    }
-  }
-  newRoot->setParent(rootParent);
-  node->setParent(newRoot);
-
-  // Update the tree heights
-  int leftHeight = height(node->getLeft());
-  int rightHeight = height(node->getRight());
-  node->setHeight(1 + std::max(leftHeight, rightHeight));
-
-  int newRootLeftHeight = height(newRoot->getLeft());
-  int newRootRightHeight = height(newRoot->getRight());
-  newRoot->setHeight(1 + std::max(newRootLeftHeight, newRootRightHeight));
-
-  return newRoot;
-}
-
-/*
- * Returns the height of node
- */
-int BinarySearchTree::height(Node *node) {
-  return (node == nullptr) ? -1 : node->getHeight();
-}
-
-/*
- * Returns the balance factor of node
- * @param node
- * @return
- */
-int BinarySearchTree::balanceFactor(Node *node) {
-  int hLeft = height(node->getLeft());
-  int hRight = height(node->getRight());
-  return hLeft - hRight;
-}
-
-/*
- * Check the balance factor at this node, it does not meet requirements
- * perform tree rebalance
- *
- * @param node
- * @return
- */
-void BinarySearchTree::rebalance(Node *node) {
-
-  // get balance factor
-  int bf = balanceFactor(node);
-
-  // The node's right subtree is too tall
-  if (bf < MINBF) {
-
-    // If the node's right subtree is left heavy, then
-    // the subtree must be rotated to the right
-    if (balanceFactor(node->getRight()) > 0)
-      node->setRight(rotateRight(node->getRight()));
-
-    // We rotate left when the node's right subtree is right- heavy
-    // This will also account if the node's right node is also has
-    // and right-heavy subtree.
-    node = rotateLeft(node);
-
-    // The node's left subtree is too tall
-  } else if (bf > MAXBF) {
-
-    // If the node's left subtree is right heavy, then
-    // the subtree must be rotated to the left
-    if (balanceFactor(node->getLeft()) < 0)
-      node->setLeft(rotateLeft(node->getLeft()));
-
-    // We rotate right when the node's left subtree is left-heavy
-    // This will also account if the node's left node is also has
-    // and left-heavy subtree.
-    node = rotateRight(node);
-  }
-  // TODO : make this iterative
-  if (node->getParent()!=nullptr) {
-    rebalance(node->getParent());
+  bool isLeft = parent->getLeft() == node;
+  if (isLeft) {
+    parent->setLeft(child);
   } else {
-    root = node;
+    parent->setRight(child);
+  }
+
+  child->setParent(parent);
+  node->setParent(child);
+
+  Node *grandChild = left ? child->getLeft() : child->getRight();
+
+  if (grandChild != nullptr) {
+    if (left) {
+      node->setRight(grandChild);
+      grandChild->setParent(node);
+      child->setLeft(node);
+      Node *rightN = node->getRight();
+      Node *leftN = node->getLeft();
+      node->setHeight(std::max(rightN==nullptr ? 0 : rightN->getHeight(), 
+                              leftN==nullptr ? 0 :leftN->getHeight()) + 1);
+      Node *rightC = child->getRight();
+      child->setHeight(std::max(node->getHeight(), 
+                                rightC==nullptr ? 0 : rightC->getHeight()) + 1);
+    } else {
+      node->setLeft(grandChild);
+      grandChild->setParent(node);
+      child->setRight(node);
+      Node *rightN = node->getRight();
+      Node *leftN = node->getLeft();
+      node->setHeight(std::max(rightN==nullptr ? 0 : rightN->getHeight(), 
+                              leftN==nullptr ? 0 :leftN->getHeight()) + 1);
+      Node *leftC = child->getLeft();
+      child->setHeight(std::max(node->getHeight(), 
+                                leftC==nullptr ? 0 : leftC->getHeight() + 1));
+    }
+  }  else {
+    if (left) {
+      node->setRight(grandChild);
+      child->setLeft(node);
+      Node *rightN = node->getRight();
+      Node *leftN = node->getLeft();
+      node->setHeight(std::max(rightN==nullptr ? 0 : rightN->getHeight(), 
+                              leftN==nullptr ? 0 :leftN->getHeight()) + 1);
+      Node *rightC = child->getRight();
+      child->setHeight(std::max(node->getHeight(), 
+                                rightC==nullptr ? 0 : rightC->getHeight()) + 1);
+    } else {
+      node->setLeft(grandChild);
+      child->setRight(node);
+      Node *rightN = node->getRight();
+      Node *leftN = node->getLeft();
+      node->setHeight(std::max(rightN==nullptr ? 0 : rightN->getHeight(), 
+                              leftN==nullptr ? 0 :leftN->getHeight()) + 1);
+      Node *leftC = child->getLeft();
+      child->setHeight(std::max(node->getHeight(), 
+                                leftC==nullptr ? 0 : leftC->getHeight() + 1));
+    }
   }
 }
 
@@ -744,9 +720,11 @@ void routine_1(BinarySearchTree &bst, int id, int n_threads,
   int count = 0;
   for (int i=1*id; i<keys.size(); i+=n_threads) {
     // printf("Thread %d: insert #%d\n", id, keys.at(i));
+    // std::cout<<"key "<<keys.at(i)<<std::endl;
     bst.insert(keys.at(i));
     // count++;
   }
+  // std::cout<<"here"<<std::endl;
   int increment = n_threads;
   for (int i=1*id; i<keys.size(); i+=increment) {
     // printf("Thread %d: remove #%d\n", id, keys.at(i));  
@@ -872,7 +850,7 @@ int main(int argc, char **argv) {
   std::thread threads[n_threads];
 
   std::vector<int> keys = init_list_ints(200000);
-  BinarySearchTree bst = BinarySearchTree();
+  BinarySearchTree bst = BinarySearchTree(true);
   for (int i=0; i<n_threads; i++) {
     threads[i] = std::thread(routine_1, std::ref(bst), i, n_threads, std::ref(keys));  
   }
