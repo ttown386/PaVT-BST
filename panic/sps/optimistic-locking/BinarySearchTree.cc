@@ -160,8 +160,6 @@ void BinarySearchTree::insert(int const &data) {
       curr->lock.unlock();
       continue;
     }
-
-
     
     Node *newNode = new Node(data);
     newNode->setParent(curr);
@@ -195,7 +193,7 @@ void BinarySearchTree::insert(int const &data) {
     if (isAvl) {
       rebalance(curr);
     }
-    
+    return;
   }
 }
 
@@ -947,6 +945,46 @@ std::vector<int> init_ops(int max, int add, int rem, int cont) {
   return ops;
 }
 
+class NodeDepth {
+public:
+  Node * node;
+  int depth;
+  NodeDepth(Node *n, int d) {
+    node=n;
+    depth = d;
+  }
+};
+
+void printTreeDepth(BinarySearchTree bst) {
+  Node *start = bst.root;
+  std::queue<NodeDepth *> q;
+  q.push(new NodeDepth(start, 0));
+
+  int prevDepth = 0;
+  while(!q.empty()) {
+
+    NodeDepth *curr = q.front();
+    Node *currNode = curr->node;
+    int currDepth = curr->depth;
+    q.pop();
+    delete curr;
+
+    if (currDepth!=prevDepth) {
+      std::cout<<"\n";
+      prevDepth = currDepth;
+    }
+    if (currNode!=nullptr) {
+      std::cout<<currNode->getData()<<" ";
+    } else {
+      std::cout<<"- ";
+    }
+    if (currNode!=nullptr) {
+      q.push(new NodeDepth(currNode->getLeft(), currDepth + 1));
+      q.push(new NodeDepth(currNode->getRight(), currDepth + 1));
+    } 
+  }
+}
+
 
 int main(int argc, char **argv) {
   
@@ -965,7 +1003,13 @@ int main(int argc, char **argv) {
   std::vector<int> keys = init_list_ints(total*n_threads);
   std::vector<int> ops = init_ops(total, total*add/100, total*rem/100, total*cont/100);
   
-  for (int j=0; j<10; j++) {
+  // BinarySearchTree bst(true);
+  // for (int i=0; i<20; i++) {
+  //   bst.insert(i);
+  // }
+  printTreeDepth(bst);
+
+  for (int j=0; j<0; j++) {
     BinarySearchTree *bst = new BinarySearchTree(true);
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     for (int i=0; i<n_threads; i++) {
