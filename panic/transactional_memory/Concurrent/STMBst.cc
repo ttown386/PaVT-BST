@@ -160,10 +160,10 @@ void STMBst::insert(int const &data) {
       // Perform AVL rotations if applicable
     }
 
-    // std::cout<<"rebalance"<<std::endl;
-    __transaction_atomic {
-      if (isAvl) rebalance(curr);
-    }
+    // std::cout<<"finished insert"<<std::endl;
+    if (isAvl) rebalance(curr);
+    // std::cout<<"finished balance"<<std::endl;
+    return;
   }
 }
 
@@ -171,6 +171,9 @@ void STMBst::remove(int const &data) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
+
+  Node *toBalance1 = nullptr;
+  Node *toBalance2 = nullptr;
 
   while (true) {
     
@@ -205,15 +208,14 @@ void STMBst::remove(int const &data) {
         return;
       }
 
-      // printf("%d: 1\n", id);
-      /*  A leaf node */
+      
       Node *leftChild = curr->getLeft();
       Node *rightChild = curr->getRight();
       bool parentIsLarger = (parent->getData() > data ? true : false);
 
+      /*  A leaf node */
       if (leftChild == nullptr && rightChild == nullptr) {
 
-        //One possible atmoic segment
         maxSnapNode = curr->rightSnap;
         minSnapNode = curr->leftSnap;
         curr->mark = true;
@@ -228,12 +230,10 @@ void STMBst::remove(int const &data) {
           maxSnapNode->leftSnap = parent;
         }
 
-        if (isAvl) rebalance(parent);
-        return;
-      }
+        toBalance1 = parent;
 
-      /* A node with at most 1 child */
-      if (leftChild == nullptr || rightChild == nullptr) {
+         /* A node with at most 1 child */
+      } else if (leftChild == nullptr || rightChild == nullptr) {
 
         bool hasRightChild = leftChild == nullptr;
         Node *currChild = (hasRightChild) ? rightChild : leftChild;
@@ -266,97 +266,101 @@ void STMBst::remove(int const &data) {
         minSnapNode->rightSnap = maxSnapNode;
         maxSnapNode->leftSnap = minSnapNode;
 
-        if (isAvl) rebalance(parent);
-        return;
-      }
+        toBalance1 = parent;
 
-      /* Hard Cases */
-      minSnapNode = curr->leftSnap;
-      maxSnapNode = curr->rightSnap;
-
-      if (minSnapNode->rightSnap != curr || minSnapNode->mark) {
-        continue;
-      }
-
-      /* Node with where the right child's left node is null */
-      // Atomic PlaceHolder
-      if (rightChild->getLeft() == nullptr) {
-        curr->mark = true;
-
-        rightChild->setLeft(leftChild);
-        leftChild->setParent(rightChild);
-        rightChild->setParent(parent);
-
-        if (parent->getLeft() == curr) {
-          parent->setLeft(rightChild);
-        } else {
-          parent->setRight(rightChild);
-        }
-
-        minSnapNode->rightSnap = maxSnapNode;
-        maxSnapNode->leftSnap = minSnapNode;
-
-        if (isAvl) rebalance(rightChild);
-
-        return;
-      }
-
-      Node *succ = maxSnapNode;
-      Node *succParent = succ->getParent();
-
-      if (succParent != rightChild) {
-        if (maxSnapNode->getParent() != succParent || maxSnapNode->mark) {
-          continue;
-        }
-      }
-
-      if (maxSnapNode->leftSnap != curr || maxSnapNode->mark) {
-        continue;
-      }
-
-      Node *succRightChild = succ->getRight();
-      Node *succRightSnapshot = succ->rightSnap;
-
-      if (succRightChild != nullptr) {
-        succRightSnapshot = succ->rightSnap;
-        if (succRightSnapshot->leftSnap != succ || succRightSnapshot->mark) {
-          continue;
-        }
-      }
-      // Mark the node
-      curr->mark = true;
-
-      succ->setRight(rightChild);
-      rightChild->setParent(succ);
-
-      succ->setLeft(leftChild);
-      leftChild->setParent(succ);
-
-      succ->setParent(parent);
-
-      if (parentIsLarger) {
-        parent->setLeft(succ);
+        /* Hard Cases */ 
       } else {
-        parent->setRight(succ);
+        
+        minSnapNode = curr->leftSnap;
+        maxSnapNode = curr->rightSnap;
+
+        if (minSnapNode->rightSnap != curr || minSnapNode->mark) {
+          continue;
+        }
+
+        /* Node with where the right child's left node is null */
+        // Atomic PlaceHolder
+        if (rightChild->getLeft() == nullptr) {
+          curr->mark = true;
+
+          rightChild->setLeft(leftChild);
+          leftChild->setParent(rightChild);
+          rightChild->setParent(parent);
+
+          if (parent->getLeft() == curr) {
+            parent->setLeft(rightChild);
+          } else {
+            parent->setRight(rightChild);
+          }
+
+          minSnapNode->rightSnap = maxSnapNode;
+          maxSnapNode->leftSnap = minSnapNode;
+
+          toBalance1 = rightChild;
+        } else {
+          Node *succ = maxSnapNode;
+          Node *succParent = succ->getParent();
+
+          if (succParent != rightChild) {
+            if (maxSnapNode->getParent() != succParent || maxSnapNode->mark) {
+              continue;
+            }
+          }
+
+          if (maxSnapNode->leftSnap != curr || maxSnapNode->mark) {
+            continue;
+          }
+
+          Node *succRightChild = succ->getRight();
+          Node *succRightSnapshot = succ->rightSnap;
+
+          if (succRightChild != nullptr) {
+            succRightSnapshot = succ->rightSnap;
+            if (succRightSnapshot->leftSnap != succ || succRightSnapshot->mark) {
+              continue;
+            }
+          }
+          // Mark the node
+          curr->mark = true;
+
+          succ->setRight(rightChild);
+          rightChild->setParent(succ);
+
+          succ->setLeft(leftChild);
+          leftChild->setParent(succ);
+
+          succ->setParent(parent);
+
+          if (parentIsLarger) {
+            parent->setLeft(succ);
+          } else {
+            parent->setRight(succ);
+          }
+
+          succParent->setLeft(succRightChild);
+          if (succRightChild != nullptr)
+            succRightChild->setParent(succParent);
+
+          // Update Snaps
+          succ->rightSnap = succRightSnapshot;
+          succRightSnapshot->leftSnap = succ;
+          // Atomic PlaceHolder
+          succ->leftSnap = minSnapNode;
+          minSnapNode->rightSnap = succ; 
+
+          toBalance1 = succ;
+          toBalance2 = succParent;
+        }
       }
-
-      succParent->setLeft(succRightChild);
-      if (succRightChild != nullptr)
-        succRightChild->setParent(succParent);
-
-      // Update Snaps
-      succ->rightSnap = succRightSnapshot;
-      succRightSnapshot->leftSnap = succ;
-      // Atomic PlaceHolder
-      succ->leftSnap = minSnapNode;
-      minSnapNode->rightSnap = succ;
-
-      if (isAvl) {
-        rebalance(succ);
-        rebalance(succParent);
-      } 
-      return;
     }
+
+    // std::cout<<"finished removed"<<std::endl;
+    if (isAvl) {
+      rebalance(toBalance1);
+      if (toBalance2!=nullptr) rebalance(toBalance2);
+    }
+    // std::cout<<"finished balance"<<std::endl;
+    return;
   }
 }
 
@@ -494,97 +498,125 @@ int STMBst::height(Node *node) {
 
 void STMBst::rebalance(Node *node) {
 
+  if (node==nullptr) {
+    std::cout<<"nullptr dude"<<std::endl;
+  }
+
   if (node==root) {
     return;
   }
 
   Node *parent = node->getParent();
+  Node *curr = node;
+  Node *child;
+  Node *grandChild;
+  int cond = -1;
+  while(curr!=root) {
 
-  while(node!=root) {
+    __transaction_atomic {
 
-    // lock parent
-    if (node->getParent()!=parent) {
-      if (node->mark) {
+      if (curr->getParent()!=parent) {
+        if (curr->mark) {
+          return;
+        }
+        parent = curr->getParent();
+        continue;
+      }
+      // std::cout<<"b\n";
+      if (curr->mark) {
         return;
       }
-      parent = node->getParent();
-      continue;
-    }
-    // std::cout<<"b\n";
-    if (node->mark) {
-      return;
-    }
 
-    Node *left = node->getLeft();
-    Node *right= node->getRight();
+      Node *left = curr->getLeft();
+      Node *right= curr->getRight();
 
-    int leftHeight = height(left);
-    int rightHeight = height(right);
+      int leftHeight = height(left);
+      int rightHeight = height(right);
 
-    int currHeight = std::max(leftHeight, rightHeight) + 1;
-    int prevHeight = node->getHeight();
+      int currHeight = std::max(leftHeight, rightHeight) + 1;
+      int prevHeight = curr->getHeight();
 
-    int bf = leftHeight - rightHeight;
-    if (currHeight != prevHeight) {
-      node->setHeight(currHeight);
-    } else if (bf <= 1) {
-      return;
-    }
-
-    Node *child;
-    // The node's right subtree is too tall
-    if (bf < MINBF) {
-      child = right;
-
-      Node *childLeft = child->getLeft();
-      Node *childRight = child->getRight();
-
-      int childLeftHeight = height(childLeft);
-      int childRightHeight = height(childRight);
-
-      int childBf = childLeftHeight - childRightHeight;
-
-      Node *grandChild = childLeft;
-
-      if (childBf > 0) {
-        rotateRight(grandChild, child, node);
-        rotateLeft(grandChild, node, parent);
-        node = grandChild;
-
-      } else {
-        rotateLeft(child, node, parent);
-        node = child;
+      int bf = leftHeight - rightHeight;
+      if (currHeight != prevHeight) {
+        curr->setHeight(currHeight);
+      } else if (bf <= 1) {
+        return;
       }
 
-      // The node's left subtree is too tall
-    } else if (bf > MAXBF) {
-      child = left;
+      // The curr's right subtree is too tall
+      if (bf < MINBF) {
+        child = right;
 
-      Node *childLeft = child->getLeft();
-      Node *childRight = child->getRight();
+        Node *childLeft = child->getLeft();
+        Node *childRight = child->getRight();
 
-      int childLeftHeight = height(childLeft);
-      int childRightHeight = height(childRight);
+        int childLeftHeight = height(childLeft);
+        int childRightHeight = height(childRight);
 
-      int childBf = childLeftHeight - childRightHeight;
+        int childBf = childLeftHeight - childRightHeight;
 
-      Node *grandChild = childRight;
+        grandChild = childLeft;
 
-      if (childBf < 0) {
-        rotateLeft(grandChild, child, node);
-        rotateRight(grandChild, node, parent);
-        node = grandChild;
+        if (childBf > 0) {
+          rotateRight(grandChild, child, curr);
+          rotateLeft(grandChild, curr, parent);
+          cond = 1;
+
+        } else {
+          rotateLeft(child, curr, parent);
+          cond = 2;
+        }
+
+        // The curr's left subtree is too tall
+      } else if (bf > MAXBF) {
+        child = left;
+
+        Node *childLeft = child->getLeft();
+        Node *childRight = child->getRight();
+
+        int childLeftHeight = height(childLeft);
+        int childRightHeight = height(childRight);
+
+        int childBf = childLeftHeight - childRightHeight;
+
+        grandChild = childRight;
+
+        if (childBf < 0) {
+          rotateLeft(grandChild, child, curr);
+          rotateRight(grandChild, curr, parent);
+          cond = 1;
+        } else {
+          rotateRight(child, curr, parent);
+          cond = 2;
+        }
+
       } else {
-        rotateRight(child, node, parent);
-        node = child;
+        // Traverse back up tree
+        cond = 3;
       }
+    } // transatomic
 
-    } else {
-      // Traverse back up tree
-      node = parent;
-      parent = node->getParent();
-    }
-  }
+    // where to traverse next
+    switch(cond) {
+      case 1: {
+        curr = grandChild;
+        break;
+      }
+      case 2: {
+        curr = child;
+        break;
+      }
+      case 3: {
+        curr = parent;
+        parent = curr->getParent();
+        break;
+      }
+      default : {
+        // impossible
+        break;
+      }
+    } // switch
+  }// while loop
 }
 
 
@@ -724,6 +756,7 @@ int main(int argc, char **argv) {
   std::vector<int> keys = init_list_ints(200000);
   
   STMBst bst = STMBst(true);
+  std::cout<<"Here"<<std::endl;
   for (int j=0; j<1; j++) {
     for (int i = 0; i<n_threads; i++) {
       threads[i] = std::thread(routine_1, std::ref(bst), i, n_threads, std::ref(keys));
