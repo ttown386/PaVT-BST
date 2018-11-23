@@ -46,7 +46,7 @@ STMBst::STMBst(bool isAvl) {
 }
 
 STMBst::~STMBst() {
-//  delete root;
+  delete root;
 }
 
 Node *STMBst::getRoot() {
@@ -65,6 +65,16 @@ int STMBst::nextField(Node *node, int const &data) {
   return HERE;
 }
 
+/**
+ * Traverse to node and lock it. If tree contains node, we attempt to
+ * lock the node. Check if marked. If not, the last node is the one to be 
+ * inserted. Check if the key(data) is in the snapshos of the node. If not
+ * restart the traversal.
+ * 
+ * @param  node Starting node
+ * @param  data key value to search for
+ * @return      The last node in the traversal which is now locked.
+ */
 Node *STMBst::traverse(Node *node, int const &data) {
   bool restart = false;
   while (true) {
@@ -82,8 +92,7 @@ Node *STMBst::traverse(Node *node, int const &data) {
 
       // We have found node
       if (field == HERE) {
-        // std::cout<<"found node"<<std::endl;
-        // std::cout<<"locked node"<<std::endl;
+
         // If marked then break from first while loop and restart
         if (curr->mark) {
           restart = true;
@@ -104,6 +113,14 @@ Node *STMBst::traverse(Node *node, int const &data) {
   }
 }
 
+
+/**
+ * BinarySearchTree::insert Insert new node into tree. If tree contains node
+ * no node is inserted
+ *
+ * 
+ * @param data key to be inserted into tree
+ */
 void STMBst::insert(int const &data) {
 
   // Otherwise we traverse
@@ -160,13 +177,17 @@ void STMBst::insert(int const &data) {
       // Perform AVL rotations if applicable
     }
 
-    // std::cout<<"finished insert"<<std::endl;
     if (isAvl) rebalance(curr);
-    // std::cout<<"finished balance"<<std::endl;
     return;
   }
 }
 
+
+/**
+ * BinarySearchTree::remove Removes node from tree. If node is not present then the
+ * call returns. 
+ * @param data The key to be removed from the tree
+ */
 void STMBst::remove(int const &data) {
 
   Node *maxSnapNode;
@@ -245,7 +266,6 @@ void STMBst::remove(int const &data) {
         Node *snapshot = (hasRightChild) ? maxSnapNode : minSnapNode;
 
         // if the snapshot has changed restart
-        // Atomic PlaceHolder
         if ((hasRightChild && snapshot->leftSnap != curr) ||
           (!hasRightChild && snapshot->rightSnap != curr) ||
           snapshot->mark) {
@@ -279,7 +299,6 @@ void STMBst::remove(int const &data) {
         }
 
         /* Node with where the right child's left node is null */
-        // Atomic PlaceHolder
         if (rightChild->getLeft() == nullptr) {
           curr->mark = true;
 
@@ -344,7 +363,7 @@ void STMBst::remove(int const &data) {
           // Update Snaps
           succ->rightSnap = succRightSnapshot;
           succRightSnapshot->leftSnap = succ;
-          // Atomic PlaceHolder
+          
           succ->leftSnap = minSnapNode;
           minSnapNode->rightSnap = succ; 
 
@@ -354,16 +373,20 @@ void STMBst::remove(int const &data) {
       }
     }
 
-    // std::cout<<"finished removed"<<std::endl;
     if (isAvl) {
       rebalance(toBalance1);
       if (toBalance2!=nullptr) rebalance(toBalance2);
     }
-    // std::cout<<"finished balance"<<std::endl;
     return;
   }
 }
 
+
+/**
+ * BinarySearchTree::contains Returns true if tree contains node and false otherwise
+ * @param  data key to search for
+ * @return      A boolean value
+ */
 bool STMBst::contains(int const &data) {
   bool restart = false;
   while (true) {
@@ -381,8 +404,7 @@ bool STMBst::contains(int const &data) {
 
       // We have found node
       if (field == HERE) {
-        // std::cout<<"found node"<<std::endl;
-        // std::cout<<"locked node"<<std::endl;
+
         // If marked then break from first while loop and restart
         if (curr->mark) {
           restart = true;
@@ -403,16 +425,18 @@ bool STMBst::contains(int const &data) {
     // grab snapshot
     // check if restart is needed
     bool goLeft = (data < curr->getData() ? true : false);
-    Node* snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
-    if (curr->mark || (goLeft && (data < snapShot->getData())) ||
-      (!goLeft && (data > snapShot->getData()))) {
-      continue;
+    __transaction_atomic{
+      Node *snapShot = (goLeft? curr->leftSnap : curr->rightSnap);
+      if (curr->mark || (goLeft && (data < snapShot->getData()))||
+          (!goLeft &&(data > snapShot->getData()))) {
+        continue;
+      }
     }
     return false;
   }
 }
 
-
+// Rotates node to the left. Child becomes nodes parent.
 void STMBst::rotateLeft(Node *child, Node *node, Node *parent) {
 
   // Grab the nodes right child
@@ -451,6 +475,7 @@ void STMBst::rotateLeft(Node *child, Node *node, Node *parent) {
   newRoot->setHeight(1 + std::max(newRootLeftHeight, newRootRightHeight));
 }
 
+//Rotates node to the right. Child becomes nodes parent
 void STMBst::rotateRight(Node *child, Node *node, Node *parent) {
 
   // Grab the nodes left child
@@ -495,12 +520,13 @@ int STMBst::height(Node *node) {
   return (node == nullptr) ? -1 : node->getHeight();
 }
 
-
+/*
+ * Check the balance factor at this node, it does not meet requirements
+ * perform tree rebalance
+ *
+ * @param node
+ */
 void STMBst::rebalance(Node *node) {
-
-  if (node==nullptr) {
-    std::cout<<"nullptr dude"<<std::endl;
-  }
 
   if (node==root) {
     return;
@@ -510,6 +536,8 @@ void STMBst::rebalance(Node *node) {
   Node *curr = node;
   Node *child;
   Node *grandChild;
+
+  // Condition for traversing to next node
   int cond = -1;
   while(curr!=root) {
 
@@ -522,7 +550,6 @@ void STMBst::rebalance(Node *node) {
         parent = curr->getParent();
         continue;
       }
-      // std::cout<<"b\n";
       if (curr->mark) {
         return;
       }
@@ -630,7 +657,6 @@ void inOrderTraversal(STMBst &bst) {
 
   std::stack<Node*> stack;
 
-  // TODO: bst should be a constant reference so as to not alter input
   Node *curr = bst.getRoot();
 
   while (!stack.empty() || curr!=nullptr) {
@@ -743,35 +769,157 @@ void routine_1(STMBst &bst, int id, int n_threads,
   }
 }
 
-int main(int argc, char **argv) {
+void routine_4(STMBst &bst, int id, int n_threads, std::vector<int> keys, std::vector<int> ops) {
 
-  if (argc != 2) {
-    std::cout << "Please enter correct number of arguments!" << std::endl;
+  int count = 0;
+  int add = id;
+  int rem = id;
+  int cont = id;
+  for (int i=0; i<ops.size(); i++) {
+    if (ops.at(i)==0) {
+      bst.insert(keys.at(add));
+      add+=n_threads;
+    } else if (ops.at(i) == 1) {
+      bst.remove(keys.at(rem));
+      rem+=n_threads;
+    } else {
+      bst.contains(keys.at(cont));
+      rem+=n_threads;
+    }
+  }
+}
+
+std::vector<int> init_ops(int max, int add, int rem, int cont) {
+  std::vector<int> ops;
+  for (int i=0; i<add; i++) {
+    ops.push_back(0);
+  }
+  for (int i=0; i<rem; i++) {
+    ops.push_back(1);
+  }
+  for (int i=0; i<cont; i++) {
+    ops.push_back(2);
+  }
+  auto rng = std::default_random_engine {};
+  std::shuffle(std::begin(ops), std::end(ops), rng);
+  return ops;
+}
+
+class NodeDepth {
+public:
+  Node * node;
+  int depth;
+  NodeDepth(Node *n, int d) {
+    node=n;
+    depth = d;
+  }
+};
+
+void printTreeDepth(STMBst bst) {
+  Node *start = bst.root;
+  std::queue<NodeDepth *> q;
+  q.push(new NodeDepth(start, 0));
+
+  int prevDepth = 0;
+  while(!q.empty()) {
+
+    NodeDepth *curr = q.front();
+    Node *currNode = curr->node;
+    int currDepth = curr->depth;
+    q.pop();
+    delete curr;
+
+    if (currDepth!=prevDepth) {
+      std::cout<<"\n";
+      prevDepth = currDepth;
+    }
+    if (currNode!=nullptr) {
+      std::cout<<currNode->getData()<<" ";
+    } else {
+      std::cout<<"- ";
+    }
+    if (currNode!=nullptr) {
+      q.push(new NodeDepth(currNode->getLeft(), currDepth + 1));
+      q.push(new NodeDepth(currNode->getRight(), currDepth + 1));
+    } 
+  }
+}
+
+STMBst *init_BST(int numberOfNodes, bool AVL, std::random_device &rd) {
+
+  STMBst  *bst = new STMBst(AVL);
+  // std::cout<<numberOfNodes<<std::endl;
+
+  int min = -1*numberOfNodes;
+  std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+  std::uniform_int_distribution<int> uni(min,0); // guaranteed unbiased
+  auto random_integer = uni(rng);
+
+  int start = random_integer;
+  int end = 2*numberOfNodes + start;
+
+  std::vector<int> nodevals;
+  int count = 0;
+  for (int i=start; i<end; i+=2) {
+    // std::cout<<"push\n";
+    nodevals.push_back(i);
+    count++;
+  }
+  std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
+
+  for (int i=0; i<nodevals.size(); i++) {
+    bst->insert(nodevals.at(i));
+  }
+
+  return bst;
+}
+
+
+int main(int argc, char **argv) {
+  
+  if (argc!=6) {
+    std::cout<<"Please enter correct number of arguments!"<<std::endl;
     return -1;
   }
 
-  int n_threads = std::atoi(argv[1]);
-  std::thread threads[n_threads];
+  // Initialize device
+  std::random_device rd;
+  // int [] numThreads= {1, 2, 4, 8, 16, 32};
+  const std::vector<int> numThreads= {1, 2, 4, 8};
+  for (int t = 0; t<numThreads.size(); t++ ) {
 
-  std::vector<int> keys = init_list_ints(200000);
-  
-  STMBst bst = STMBst(true);
-  std::cout<<"Here"<<std::endl;
-  for (int j=0; j<1; j++) {
-    for (int i = 0; i<n_threads; i++) {
-      threads[i] = std::thread(routine_1, std::ref(bst), i, n_threads, std::ref(keys));
+    int n_threads = numThreads.at(t);
+    std::thread threads[n_threads];
+
+    bool avlProp = std::atoi(argv[1]);
+
+    int total = std::atoi(argv[2])/n_threads;
+    int add = std::atoi(argv[3]);
+    int rem = std::atoi(argv[4]);
+    int cont = std::atoi(argv[5]);
+
+    std::vector<int> keys = init_list_ints(total*n_threads);
+    std::vector<int> ops = init_ops(total, total*add/100, total*rem/100, total*cont/100);
+
+    double avg = 0;
+    int runs = 10;
+    for (int run=0; run<runs; run++) {
+      STMBst *bst = init_BST(total*n_threads*add/100, avlProp, rd);
+      std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+      for (int i=0; i<n_threads; i++) {
+        threads[i] = std::thread(routine_4, std::ref(*bst), i, n_threads, std::ref(keys), std::ref(ops));  
+      }
+      for (int i=0; i<n_threads; i++) {
+        threads[i].join();
+      }
+      std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double, std::milli> time_span = t2 - t1;
+
+      // std::cout<<time_span.count()<<std::endl;
+      avg += time_span.count();
+      delete bst;
     }
-    for (int i = 0; i<n_threads; i++) {
-      threads[i].join();
-    }
+    // std::cout<<n_threads<<" ";
+    std::cout<<avg/((double) runs)<<std::endl;
   }
-
-  // std::cout<<"check "<<check(bst)<<std::endl;
-  // printf("Preorder :");
-  // preOrderTraversal(bst);
-  // printf("Inorder :");
-  // inOrderTraversal(bst);
-  // printf("Snaps: \n");
-  // printSnaps(bst);
-  // printf("\n");
 }
