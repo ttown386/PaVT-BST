@@ -21,9 +21,7 @@ class BinarySearchTree {
   int height(Node *node);
   void rebalance(Node *node);
   Node *traverse(Node *node, int const &data);
-  void updateSnaps(Node *node);
-  void updateSnaps(Node *start, Node *toUpdate, Node *parent);
-
+  
 // public:
   BinarySearchTree(bool isAvl=false);
   ~BinarySearchTree();
