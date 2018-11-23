@@ -99,9 +99,7 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
 
 			// We have found node
 			if (field == HERE) {
-        // std::cout<<"found node"<<std::endl;
 				curr->lock.lock();
-        // std::cout<<"locked node"<<std::endl;
 				// If marked then break from first while loop and restart
 				if (curr->mark) {
 					curr->lock.unlock();
@@ -137,8 +135,10 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
 
 
 /**
- * [BinarySearchTree::insert Insert new node into tree. If tree contains node
- *                           no node is inserted]
+ * BinarySearchTree::insert Insert new node into tree. If tree contains node
+ * no node is inserted
+ *
+ * 
  * @param data key to be inserted into tree
  */
 void BinarySearchTree::insert(int const &data) {
