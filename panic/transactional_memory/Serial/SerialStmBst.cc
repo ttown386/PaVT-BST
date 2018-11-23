@@ -47,7 +47,7 @@ SerialStmBst::SerialStmBst(bool isAvl) {
 }
 
 SerialStmBst::~SerialStmBst() {
-  delete root;
+  delete minSentinel;
 }
 
 Node *SerialStmBst::getRoot() {
@@ -66,6 +66,16 @@ int SerialStmBst::nextField(Node *node, int const &data) {
   return HERE;
 }
 
+/**
+ * Traverse to node and lock it. If tree contains node, we attempt to
+ * lock the node. Check if marked. If not, the last node is the one to be 
+ * inserted. Check if the key(data) is in the snapshos of the node. If not
+ * restart the traversal.
+ * 
+ * @param  node Starting node
+ * @param  data key value to search for
+ * @return      The last node in the traversal which is now locked.
+ */
 Node *SerialStmBst::traverse(Node *node, int const &data) {
 
   bool restart = false;
@@ -84,8 +94,6 @@ Node *SerialStmBst::traverse(Node *node, int const &data) {
 
       // We have found node
       if (field == HERE) {
-        // std::cout<<"found node"<<std::endl;
-        // std::cout<<"locked node"<<std::endl;
         // If marked then break from first while loop and restart
         if (curr->mark) {
           restart = true;
@@ -114,17 +122,26 @@ Node *SerialStmBst::traverse(Node *node, int const &data) {
   }
 }
 
+
+
+/**
+ * BinarySearchTree::insert Insert new node into tree. If tree contains node
+ * no node is inserted
+ *
+ * 
+ * @param data key to be inserted into tree
+ */
 void SerialStmBst::insert(int const &data) {
 
   // Otherwise we traverse
   while (true) {
     Node *curr;
     __transaction_atomic {
+      // traverse to node
       curr = traverse(root, data);
 	
 			// We have a duplicate
 			if (curr->getData()== data) {
-				//curr->lock.unlock();
 				return;
 			}
     
@@ -141,6 +158,8 @@ void SerialStmBst::insert(int const &data) {
       bool parentIsLarger = data < curr->getData();
       Node *snapshot = (parentIsLarger ? curr->leftSnap : curr->rightSnap);
 
+      // If parent is larger, set left pointer to new node
+      // and update snaps
       if (parentIsLarger) {
         newNode->leftSnap = snapshot;
         newNode->rightSnap = curr;
@@ -161,8 +180,6 @@ void SerialStmBst::insert(int const &data) {
       // Perform AVL rotations if applicable
       if (isAvl) rebalance(curr);
     }
-    // std::cout<<"Finished insert"<<std::endl;
-    // std::cout<<"Finished rebalancing"<<std::endl;
     return;
   }
 }
@@ -175,11 +192,13 @@ void SerialStmBst::remove(int const &data) {
   Node *toBalance1 = nullptr;
   Node *toBalance2 = nullptr;
 
+  // Continually attempt removal until call is returned
   while (true) {
     __transaction_atomic{
+      // Grab node
       Node *curr = traverse(root, data);
 
-    // Apply atomic transaction
+      // Check the snapshot and if node is marked
       bool goLeft = (data < curr->getData() ? true : false);
       Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
       if (curr->mark ||
@@ -188,7 +207,7 @@ void SerialStmBst::remove(int const &data) {
         continue;
       }
 
-      // Lock all nodes
+      // Grab the parent
       Node *parent = curr->getParent();
 
       //Some other thread has gone and changed things around
@@ -214,10 +233,14 @@ void SerialStmBst::remove(int const &data) {
       /*  A leaf node */
       if (leftChild == nullptr && rightChild == nullptr) {
 
+        // Grab snapshots
         maxSnapNode = curr->rightSnap;
         minSnapNode = curr->leftSnap;
+
+        // Mark the nodes
         curr->mark = true;
 
+        // Update pointers and snapshots
         if (parentIsLarger) {
           parent->setLeft(nullptr);
           parent->leftSnap = minSnapNode;
@@ -228,6 +251,7 @@ void SerialStmBst::remove(int const &data) {
           maxSnapNode->leftSnap = parent;
         }
 
+        // Node to rebalance
         toBalance1 = parent;
 
          /* A node with at most 1 child */
@@ -250,6 +274,7 @@ void SerialStmBst::remove(int const &data) {
           continue;
         }
 
+        // Mark node 
         curr->mark = true;
         currChild = (hasRightChild) ? rightChild : leftChild;
         if (parent->getLeft()==curr) {
@@ -291,20 +316,24 @@ void SerialStmBst::remove(int const &data) {
             parent->setRight(rightChild);
           }
 
+          // Update snapshots
           minSnapNode->rightSnap = maxSnapNode;
           maxSnapNode->leftSnap = minSnapNode;
 
+          // node to rebalance
           toBalance1 = rightChild;
         } else {
           Node *succ = maxSnapNode;
           Node *succParent = succ->getParent();
 
+          // Check that the successors parent is the correct node
           if (succParent != rightChild) {
             if (maxSnapNode->getParent() != succParent || maxSnapNode->mark) {
               continue;
             }
           }
 
+          // Make sure the snapshot has not changed
           if (maxSnapNode->leftSnap != curr || maxSnapNode->mark) {
             continue;
           }
@@ -361,8 +390,11 @@ void SerialStmBst::remove(int const &data) {
 }
 
 
-
-
+/**
+ * BinarySearchTree::contains Returns true if tree contains node and false otherwise
+ * @param  data key to search for
+ * @return      A boolean value
+ */
 bool SerialStmBst::contains(int const &data) {
   bool restart = false;
   while (true) {
@@ -371,15 +403,15 @@ bool SerialStmBst::contains(int const &data) {
     int field = nextField(curr, data);
 
     // traverse
-    while (curr->get(field)!=nullptr) {
+    Node *next = curr->get(field);
+    while (next != nullptr) {
 
-      curr = curr->get(field);
+      curr = next;
 
       field = nextField(curr, data);
 
       // We have found node
-      if (field==HERE) {
-
+      if (field == HERE) {
         // If marked then break from first while loop and restart
         if (curr->mark) {
           restart = true;
@@ -389,6 +421,7 @@ bool SerialStmBst::contains(int const &data) {
         // Only executed if curr is not marked
         return true;
       }
+      next = curr->get(field);
     }
 
     if (restart == true) {
@@ -411,6 +444,7 @@ bool SerialStmBst::contains(int const &data) {
   }
 }
 
+// Rotates node to the left. Child becomes nodes parent.
 void SerialStmBst::rotateLeft(Node *child, Node *node, Node *parent) {
 
   // Grab the nodes right child
@@ -449,6 +483,7 @@ void SerialStmBst::rotateLeft(Node *child, Node *node, Node *parent) {
   newRoot->setHeight(1 + std::max(newRootLeftHeight, newRootRightHeight));
 }
 
+//Rotates node to the right. Child becomes nodes parent
 void SerialStmBst::rotateRight(Node *child, Node *node, Node *parent) {
 
   // Grab the nodes left child
@@ -494,6 +529,12 @@ int SerialStmBst::height(Node *node) {
 }
 
 
+/*
+ * Check the balance factor at this node, it does not meet requirements
+ * perform tree rebalance
+ *
+ * @param node
+ */
 void SerialStmBst::rebalance(Node *node) {
 
   if (node==root) {
@@ -512,7 +553,7 @@ void SerialStmBst::rebalance(Node *node) {
         parent = curr->getParent();
         continue;
       }
-      // std::cout<<"b\n";
+
       if (curr->mark) {
         return;
       }
@@ -595,12 +636,11 @@ void SerialStmBst::rebalance(Node *node) {
  * UTILITY FUNCTIONS
  * 
  */
-
 void inOrderTraversal(SerialStmBst &bst) {
 
   std::stack<Node*> stack;
 
-  // TODO: bst should be a constant reference so as to not alter input
+  // bst should be a constant reference so as to not alter input
   Node *curr = bst.getRoot();
 
   while (!stack.empty() || curr!=nullptr) {
@@ -617,6 +657,7 @@ void inOrderTraversal(SerialStmBst &bst) {
   }
   std::cout<<std::endl;
 }
+
 void preOrderTraversal(SerialStmBst &bst) {
 
   std::stack<Node*> stack;
@@ -690,58 +731,156 @@ bool check(SerialStmBst bst) {
   return true;
 }
 
-void routine_1(SerialStmBst &bst, int id, int n_threads,
-  std::vector<int> keys) {
+
+void routine_4(SerialStmBst &bst, int id, int n_threads, std::vector<int> keys, std::vector<int> ops) {
 
   int count = 0;
-  // std::cout<<"before"<<std::endl;
-  for (int i = 1 * id; i<keys.size(); i += n_threads) {
-    // printf("Thread %d: insert #%d\n", id, count);
-    bst.insert(keys.at(i));
-    // std::cout<<"insert"<<std::endl;
-    // count++;
-  }
-  std::cout<<"after"<<std::endl;
-  int increment = n_threads;
-  // std::cout<<"here"<<std::endl;
-  for (int i = 1 * id; i<keys.size(); i++) {
-    // std::cout<<i<<std::endl;
-    bst.remove(keys.at(i));
-    // printf("Thread %d: remove #%d\n", id, count);
-    // count++;
+  int add = id;
+  int rem = id;
+  int cont = id;
+  for (int i=0; i<ops.size(); i++) {
+    if (ops.at(i)==0) {
+      bst.insert(keys.at(add));
+      add+=n_threads;
+    } else if (ops.at(i) == 1) {
+      bst.remove(keys.at(rem));
+      rem+=n_threads;
+    } else {
+      bst.contains(keys.at(cont));
+      rem+=n_threads;
+    }
   }
 }
 
+std::vector<int> init_ops(int max, int add, int rem, int cont) {
+  std::vector<int> ops;
+  for (int i=0; i<add; i++) {
+    ops.push_back(0);
+  }
+  for (int i=0; i<rem; i++) {
+    ops.push_back(1);
+  }
+  for (int i=0; i<cont; i++) {
+    ops.push_back(2);
+  }
+  auto rng = std::default_random_engine {};
+  std::shuffle(std::begin(ops), std::end(ops), rng);
+  return ops;
+}
+
+class NodeDepth {
+public:
+  Node * node;
+  int depth;
+  NodeDepth(Node *n, int d) {
+    node=n;
+    depth = d;
+  }
+};
+
+void printTreeDepth(SerialStmBst bst) {
+  Node *start = bst.root;
+  std::queue<NodeDepth *> q;
+  q.push(new NodeDepth(start, 0));
+
+  int prevDepth = 0;
+  while(!q.empty()) {
+
+    NodeDepth *curr = q.front();
+    Node *currNode = curr->node;
+    int currDepth = curr->depth;
+    q.pop();
+    delete curr;
+
+    if (currDepth!=prevDepth) {
+      std::cout<<"\n";
+      prevDepth = currDepth;
+    }
+    if (currNode!=nullptr) {
+      std::cout<<currNode->getData()<<" ";
+    } else {
+      std::cout<<"- ";
+    }
+    if (currNode!=nullptr) {
+      q.push(new NodeDepth(currNode->getLeft(), currDepth + 1));
+      q.push(new NodeDepth(currNode->getRight(), currDepth + 1));
+    } 
+  }
+}
+
+// Initialize the binary search tree
+SerialStmBst *init_BST(int numberOfNodes, bool AVL, std::random_device &rd) {
+
+  SerialStmBst *bst = new SerialStmBst(AVL);
+
+  int min = -1*numberOfNodes;
+  std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+  std::uniform_int_distribution<int> uni(min,0); // guaranteed unbiased
+  auto random_integer = uni(rng);
+
+  int start = random_integer;
+  int end = 2*numberOfNodes + start;
+
+  std::vector<int> nodevals;
+  int count = 0;
+  for (int i=start; i<end; i+=2) {
+    // std::cout<<"push\n";
+    nodevals.push_back(i);
+    count++;
+  }
+  std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
+
+  for (int i=0; i<nodevals.size(); i++) {
+    bst->insert(nodevals.at(i));
+  }
+
+  return bst;
+}
 
 
 int main(int argc, char **argv) {
-
-  if (argc != 2) {
-    std::cout << "Please enter correct number of arguments!" << std::endl;
+  
+  if (argc!=6) {
+    std::cout<<"Please enter correct number of arguments!"<<std::endl;
     return -1;
   }
 
-  int n_threads = std::atoi(argv[1]);
-  std::thread threads[n_threads];
+  // Initialize device
+  std::random_device rd;
+  // int [] numThreads= {1, 2, 4, 8, 16, 32};
+  const std::vector<int> numThreads= {1, 2, 4, 8};
+  for (int t = 0; t<numThreads.size(); t++ ) {
 
-  std::vector<int> keys = init_list_ints(200000);
-  
-  SerialStmBst bst = SerialStmBst(true);
-  for (int j=0; j<1; j++) {
-    for (int i = 0; i<n_threads; i++) {
-      threads[i] = std::thread(routine_1, std::ref(bst), i, n_threads, std::ref(keys));
+    int n_threads = numThreads.at(t);
+    std::thread threads[n_threads];
+
+    bool avlProp = std::atoi(argv[1]);
+
+    int total = std::atoi(argv[2])/n_threads;
+    int add = std::atoi(argv[3]);
+    int rem = std::atoi(argv[4]);
+    int cont = std::atoi(argv[5]);
+
+    std::vector<int> keys = init_list_ints(total*n_threads);
+    std::vector<int> ops = init_ops(total, total*add/100, total*rem/100, total*cont/100);
+
+    double avg = 0;
+    int runs = 10;
+    for (int run=0; run<runs; run++) {
+      SerialStmBst *bst = init_BST(total*n_threads*add/100, avlProp, rd);
+      std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+      for (int i=0; i<n_threads; i++) {
+        threads[i] = std::thread(routine_4, std::ref(*bst), i, n_threads, std::ref(keys), std::ref(ops));  
+      }
+      for (int i=0; i<n_threads; i++) {
+        threads[i].join();
+      }
+      std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double, std::milli> time_span = t2 - t1;
+
+      avg += time_span.count();
+      delete bst;
     }
-    for (int i = 0; i<n_threads; i++) {
-      threads[i].join();
-    }
+    std::cout<<avg/((double) runs)<<std::endl;
   }
-
-  printf("Preorder :");
-  preOrderTraversal(bst);
-  printf("Inorder :");
-  inOrderTraversal(bst);
-  printf("Snaps: \n");
-  printSnaps(bst);
-  printf("\n");
-  std::cout<<"check "<<check(bst)<<std::endl;
 }
