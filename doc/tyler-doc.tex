@@ -1,0 +1,415 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx, float}
+\usepackage{mathtools}
+\usepackage{listings}
+%colors
+\usepackage{tikz}
+\usetikzlibrary{arrows, automata}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{pifont}
+\usepackage{amsthm}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{theorem}
+\newtheorem{theorem}{Theorem}[section]
+\makeatletter
+\newenvironment{breakablealgorithm}
+  {% \begin{breakablealgorithm}
+   \begin{center}
+     \refstepcounter{algorithm}% New algorithm
+     \hrule height.8pt depth0pt \kern2pt% \@fs@pre for \@fs@ruled
+     \renewcommand{\caption}[2][\relax]{% Make a new \caption
+       {\raggedright\textbf{\ALG@name~\thealgorithm} ##2\par}%
+       \ifx\relax##1\relax % #1 is \relax
+         \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##2}%
+       \else % #1 is not \relax
+         \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##1}%
+       \fi
+       \kern2pt\hrule\kern2pt
+     }
+  }{% \end{breakablealgorithm}
+     \kern2pt\hrule\relax% \@fs@post for \@fs@ruled
+   \end{center}
+  }
+\makeatother
+\renewcommand{\O}{\,||\,}
+\newcommand{\A}{\,\&\&\,}
+\usepackage{listings}
+%colors
+\usepackage{color}
+\definecolor{pblue}{rgb}{0.13,0.13,1}
+\definecolor{pgreen}{rgb}{0,0.5,0}
+\definecolor{pred}{rgb}{0.9,0,0}
+\definecolor{pgrey}{rgb}{0.46,0.45,0.48}
+\definecolor{light-gray}{gray}{0.95}
+\lstset{
+	showstringspaces=false,
+    numbers=left,
+    breaklines=true,
+    backgroundcolor=\color{light-gray},
+    tabsize=2,
+   	basicstyle=\small\ttfamily,
+    %literate={\ \ }{{\ }}1,
+    language = Java,
+    showspaces=false,
+    extendedchars=true, 
+    commentstyle=\color{pgreen},
+  	keywordstyle=\color{pblue},
+  	stringstyle=\color{pred},
+  	columns=fullflexible
+  	 keepspaces=true,
+}
+
+
+\begin{document}
+
+\section{Introduction}
+With the increase in the number of cores on the processor, ocncurrent...
+
+stuff about concurrency issues
+
+lock free lookups
+
+Author's contribution
+
+Importance of STM
+
+Our reimplimentation
+
+Quick outline of paper
+\section{Background}
+
+\subsection{Path Validation Traversal in Search Trees}
+\textbf{Pa}th \textbf{V}alidation traversals in search \textbf{T}rees is a necessary and sufficient condition for determining whether a key is existent in any tree. It satisfactory to observe only a limited number of nodes in the path leading to this key defined as the succinct path snapshot (SPS). A path is suitable for a key $k$ if the condition $c_i$ associated with every $node-field$ pair in the path. For a BST the conditions are $C=\{<,>\}$ and field $F=\{L, R\}$. Thus a path from the root, $n_0$, to a an arbitrary node $n_k$ is $P=(n_0, f_0), (n_1, f_1),\cdots, (n_k, f_k)$ where $n_k.f_k = null$ denotes that $n_k$ is the last node in the path as $f_k\not \in F$. The author's formal defintion of the PaVT condition stated in Theorem \ref{thm:pavt}.
+
+\begin{theorem} {(The PaVT Condition)}\label{thm:pavt}
+Given a tree $T$ a key k, and a set of node-condition pairs, $S=\{(n_{i_1}, c_{i_1}),\cdots, (n_{i_m}, c_{i_m})\}$, if there exists a moment beteween the traversal's invocation and response where all the following hold:
+\begin{enumerate}
+\item For every $(n_i, c_i) \in  S, c_i(n_i, k) = 1$
+\item $n_{i_1},\cdots, n_{i_m}$ are logically in $T$
+\item There is a path in $T$ linking these nodes
+\item The path is maximal
+\item For every node $n$ logically in $T$, either no node in $S$ is reachable from it or there exists a pair $(n_i, c_i)\in S$ where $n_i$ is reachable from $n$ via a field $f$, and $c_i(n_i, k)$ implies a condition $c(n, k)$ such that $c \implies f$ is the next field.
+\end{enumerate}
+Then there is no node logically in $T$ with a key $k$.
+\end{theorem}
+
+Applying this to a BST, if there is a path $P=(10,L),(8,L),(3,R),(4,R)$, then the suitable keys for this path are $k\in\{5, 6, 7\}$. If this path was taken to search for key $k=9$, then some mutation must have occured and the traversal would need to restart.   
+
+\subsection{Succinct Path Snapshot}
+Maintaing a full path is difficult as part of the path may have an inconsistency from some other mutation. Therefore, the authors formally define a succint path snapshot which decouples 1) from the PaVT, and allows for concurrent mutations to change nodes that link the snapshots, but do not affect the snapshot. There is a transitivity property for the paths as we traverse them. For example $P=(10,L),(8,L),(3,R),(4,R)$  can be reduced to $P=(8,L),(4,R)$ since $5>4 \implies 5 > 3$  and $5<8 \implies 5<10$. This would be the maximal set of nodes with respect to all the conditions for a BST i.e, $(<,L), (>, R)$. This is known as the \textit{succinct path snapshot} (SPS). The formal defintion that author's provided is stated below.
+\theoremstyle{definition}
+\begin{definition}{(Succinct Path Snapshot)} Let $P = (n_0, f_0),\cdots,(n_m, f_m)$ be a path and $C'=(n'_0, c_0),\cdots (n'_k, c_k)$ be a node-condition series corresponding to $P.S\subseteq C$ is a succinct path snapshot (SPS) of P if:
+\begin{enumerate}
+	\item $n'_0\cdots, n'_k$ are logically in $T$
+	\item There is a path in $T$ linking these nodes which is maximal if $n'_k.f_k = null$
+	\item For every node $n$ logically in $T$, either no node in $S$ is reachable from it, or there exists a pair $(n_i, c_i) \in S$ where $n_i$ is reachable from $n$ via some field $f$ such that for every $k$, $c_i(n_i, k)$ implies $c(n, k)$ that returns $f$ for all valid keys $w.r.t$ $S$ of $n$.
+	\item For every $(n_i, c_i), (n_j, c_j) \in S$ such that $j > i$ and for every key $k$, $c_j(n_j, k)$ does not imply $c_i(n_i, k)$ for some valid key w.r.t. $S$ of $n_i$.
+\end{enumerate}
+\end{definition}
+The validation of an SPS is not only sufficient but necessary for unsuccessful traversals. The author's state that for BST's, the snapshots can be optimized by observing that for any node $n$, that $n$'s left snapshot $S_L$, and $n$' right snapshot $R_L$ consist of its predecessor and successor, respectively,  in the logical ordering of the tree \cite{draschler-lo}. Our implementation uses pointers to maintain a reference to the predecessor and successor for a node. In order to ensure that all node's snapshots are of the same size, sentinel nodes are used to maintain order.
+
+\subsection{Correctness}
+Correctness of maintaining snapshots follows from the fact that if an update to a path is occuring, all locks must be acquired before the operation. Therefore, the snapshots are guaranteed to reflect those of the path. 
+\subsection{Linearizability}
+Snapshots are read and written to atomically which allows them to be linearized. The linearization point for a snapshot is the moment it is an SPS of a path in the tree. These snapshots can be linearized with respect to the operations. If the snapshot were to contain a node that has been removed, it is linearized just prior to the removal. If the snapshot does not contain a node that is now reachable via an insertion, it is linearized just before it was added. The idea is that if the snapshot has been read, then it is from a path that existed in the tree, and the fact that it is read means that the operating thread performing a mutation has not completed it's operation. 
+\section{Data Structure Design Principles}
+\subsection{Tree Structure}
+Our tree structure implements both the Binary Search Tree ordering property, but provides a boolean argument to the constructor to specify the AVL structure property. The AVL operation \textbf{rebalance} is performed at the end of the \textbf{insert} and \textbf{remove} operations of the tree. This allowed the code to follow the \textit{DRY} principle. The remaining functions \textbf{traverse} and \textbf{contains} are almost identical except that \textbf{traverse} will lock the node to be returned while \textbf{contains} returns a boolean value.
+
+The tree has four member variables; three of \textit{Node} and the fourth is the \textit{AVL} boolean. The \textit{Node} class can be seen in Figure \ref{fig:node}. The key values are represented as integers for simplifying the data structure requirements. In order for the structure to meet the correctness requirements, the Node class must allow the node to be marked. This will depict a logical removal when $n.mark = true$. This is done right before a node becomes unreachable. The keys are immutable, so nodes cannot be recycled. This prevents nodes from needing to be rechecked. If a node is logically in the tree, it is reachable. 
+
+We store the snapshots of the node as atomic pointers. This allows the snapshots to be linearized when they are read. Each node also a parent pointer as well as left and right pointers to its children, which allows traversing up the tree. A height field is provided to store the current height of the tree. A tree with no node has height $-1$, a single node, 0, and the height of the tree is the maximum of the left, and right subtrees + 1.
+
+The tree has four member variables; three of \textit{Node} and the fourth is the \textit{AVL} boolean. Two of the three pointers are sentinel nodes. The sentinel nodes are represented as the maximum and minimum, signed 32-bit integers in C. This does give some restriction on the number of keys to use, but this was done as the testing environment would only handle a maximum of 5,000,000 nodes. The snapshots of the sentinel nodes contained each other. The minimum sentinel was the parent of the max sentinel and the max sentinel was also the root of the tree, the third pointer.
+\begin{figure}[t]
+\label{fig:node}
+\centering
+\begin{lstlisting}
+class Node {
+	const int data;
+	bool mark;
+	std::mutex lock;
+	std::atomic<Node *> leftSnap;
+	std::atomic<Node *> rightSnap;
+	Node *left;
+	Node *right;
+	Node *parent;
+	int height;
+}
+\end{lstlisting}
+\caption{The Node data structure implemented within the BinarySearchTree class}.
+\end{figure}
+
+\subsection{Locking Protocol}
+The locking order of the lock's is such that if $n_1$ and $n_2$ are nodes in the tree, then $n_1$'s lock is acquired before $n_2$'s lock if: (1) $n_2$ is reachable from $n_1$, (2) $n_1$ and $n_2$ are reachable by a field $f_i$ and $f_j$, respectively from their lowest common ancestor and $i<j$. This is an essential top-down, left-to-right locking order. The implementation of the data structure; however, will lock the node to be removed, $n$, prior to locking the parent's node, $p$. In this case, an optimistic attempt will be taken to acquire the lock. If it fails, then both lock's are realeased and the operation is reattempted.
+
+This protocol is livelock and deadlock free since locks are acquired in the same order by all threads. At least one thread can make progress since the lowest node in the tree (level-ordering) is guaranteed to acquire all necessary locks.
+
+\subsection{Traverse/Contains}
+Algorithm \ref{alg:traverse} starts from the root of the tree and uses a helper function \textbf{nextField} to reach the next node. If the node is the last in the path, \texttt{nextField} will be such that if $f=\mathbf{nextField}(n, key)$ then $n.f = null$. If the node with $key$ is found then the node is locked. Since the thread waits for the lock, we check if the node has been marked for deletion. If so, the node is unlocked and the procedure is restarted. If the end of the path is reached, the last node in the path is locked and snapshot for the node and field is read atomically. If the key is not in the node's snapshot, the procedure is restarted otherwise the node is returned. 
+
+Being read atomically allows the snapshot to be linearized when either (i) the unmarked node with the key is found or (ii) the linearization point of the snapshot read at line \ref{alg:contains:snap}. For (i) since the node was found and locked, this node is currently reachable in the tree. The read snapshot from (ii) guarantees  that this snapshot captures the suitable path for the key. If it has not, then a mutation has occurred to alter the path such that the current thread would have traveresed to the current node which indicates the procedure to restart.
+%\begin{algorithm}[H]
+%\caption{Traverse (node, key)}
+%\label{alg:traverse}
+%\begin{algorithmic}[1]
+%\State $n\gets node$
+%\State $f \gets \mathbf{nextField}(n, key)$
+%\State $next \gets n.f$
+%\While {$next \neq null$}
+%  \State $n\gets next$
+%  \State $f \gets \mathbf{nextField}(n, key)$
+%  \If {$n.k = key$}
+%  	\State $lock(n)$
+%  	\If {$n.mark = true$}
+%  		\State $unlock(n))$ \textbf{then} restart
+%  	\EndIf
+%  	\State \Return $n$
+%	\EndIf
+%	\State $next \gets n.field$
+%\EndWhile
+%\State $S \gets (field = L$ ? $n.S_L$ : $n.S_R)$ \label{alg:traverse:snap}
+%\If{($f = L$ \textbf{and} $key \not \in (S, n)$) \textbf{or} ($f = R$ \textbf{and} $key \not \in (n, S))$}
+%\State $unlock(n))$ \textbf{then} restart
+%\EndIf
+%\State \Return $n$
+%\end{algorithmic}
+%\end{algorithm}
+
+\subsection{Contains}
+The contains method
+\begin{algorithm}[H]
+\caption{Contains (key)}
+\label{alg:contains}
+\begin{algorithmic}[1]
+\State $n\gets root$
+\State $f \gets \mathbf{nextField}(n, key)$
+\State $next \gets n.f$
+\While {$next \neq null$}
+  \State $n\gets next$
+  \State $f \gets \mathbf{nextField}(curr, key)$
+  \If {$n.k = key$}
+  	\State $lock(n)$
+  	\If {$n.mark = true$}
+  		\State restart
+  	\EndIf
+  	\State \Return true
+	\EndIf
+	\State $next \gets n.field$
+\EndWhile
+\State $S \gets (field = L$ ? $n.S_L$ : $n.S_R)$
+\If{($f = L$ \textbf{and} $key \not \in (S, n)$) \\ \textbf{or} ($f = R$ \textbf{and} $key \not \in (n, S))$} \label{alg:contains:snap}
+\State restart
+\EndIf
+\State \Return false
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Insert}
+Algorithm \ref{alg:insert} begins by calling \textbf{traverse} starting at the root for $key$. If the node returned, $n$, has a key equal to $key$ or the node is no longer the end of the path (i.e., another insertion has occurred on the same node) then the procedure is restarted. Otherwise a new node $newNode$ is allocated with its parent pointer set to $n$. Snapshots are updated based on the value of the $key$. The snapshot for $n$ and $n$'s snapshot, $S$ must be updated so that $newNode$ is contained in their snapshots while $newNode's$ snapshots consists of both $n$ and $S$. This is done prior to making $newNode$ reachable from $n$ which is the moment of linearization. 
+\begin{algorithm}[H]
+\caption{Insert (key)}
+\label{alg:insert}
+\begin{algorithmic}[1]
+\State $n\gets \mathbf{traverse}(root, key)$
+\If {$n.k = key$ \textbf{or} ($key>n.k$ \textbf{and} $n.R \neq null$) \textbf{or} ($key<n.k$ \textbf{and} $n.L \neq null$)}
+	\State $unlock(n)$ \textbf{then} restart
+\EndIf
+
+\State $newNode\gets \mathbf{new} Node(key)$
+\State $newNode.P \gets n$
+\State $S \gets (n.k > newNode.k$ ? $n.S_L$ : $n.S_R$
+\If {$n.k > newNode.k$}\label{alg:insert:snaps}
+	\State $newNode.S_L \gets S$
+	\State $newNode.S_R \gets n$
+	\State $S.S_R \gets newNode$
+	\State $n.S_L \gets newNode$
+	\State $n.L \gets newNode$
+\Else
+	\State $newNode.S_L \gets n$
+	\State $newNode.S_R \gets S$
+	\State $S.S_L \gets newNode$
+	\State $n.S_R \gets newNode$
+	\State $n.R \gets newNode$
+\EndIf
+\State $unlock(n)$
+\If {$AVL$} $\mathbf{rebalance}(n)$
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Remove}
+Algorithm \ref{alg:remove} traverses to the node to be removed. If $n.k\neq key$, then by the PaVT condition, the tree does not contain $key$ and it returns. Otherwise, an optimistic attempt to lock the parent is taken. If it fails, the procedure restarts. Once both are locked, the possible scenarios are:
+\begin{enumerate}
+\item $n$ is a leaf
+\item $n$ has one child, $c$
+\item $n$'s right child, $r$, does not have a left subtree
+\item $r$ has a left subtree which contains $n$'s successor $s$
+\end{enumerate}
+The first case is simple as all locks are acquired. The node is marked and the snapshots are updated, $S_{max}$, and $S_{min}$. The corresponding snapshot and $p$ snaps are updated to contain each other as seen starting at line \ref{alg:remove:leaf}. If $n$ has one child, then $c$ takes $n$'s place. Now $n$'s snapshots will be updated to contain each other at line \ref{alg:remove:child}. If the node has 2 children, but $r.L = null$, then $r$ is $n$'s successor and $r$ takes $n$'s place. The most difficult remove is derived when $s$ is in $r$'s left subtree. However, since $r$ has a reference to it, locking the node is done directly along with $s$'s parent $p_s$, its right child, $r_s$, and $s$'s right snapshot $(S_R)_s$
+\begin{breakablealgorithm}
+\caption{Remove (key)}
+\label{alg:remove}
+\begin{algorithmic}[1]
+\State $n\gets \mathbf{traverse}(root, key)$
+\If {$n.k \neq key$} $unlock(n);$ \Return
+\EndIf
+\State $p \gets n.P$
+\If {!$tryLock(p)$} $unlockAll()$ \textbf{then} restart
+\EndIf
+\State $l\gets n.L;\, r\gets n.R$
+
+\If {$n$ is a leaf}
+	\State $S_{\max} \gets n.S_R;\, S_{\min} \gets n.S_L$
+	\State $n.mark\gets true$
+	\If {$p.k > n.k$}\label{alg:remove:leaf}
+		\State $p.L \gets null;\,p.S_L \gets S_{\min};\, S_{\min}.S_R \gets p$
+	\Else
+		\State $p.R \gets null;\,p.S_R \gets S_{\max};\, S_{\max}.S_L \gets p$
+	\EndIf
+	\State $unlockALl()$
+	\If {$AVL$} $\mathbf{rebalance}(p)$; \Return
+	\EndIf 
+\EndIf
+
+\If {$n$ has one child}
+	\State $\alpha \gets l=null$
+	\State $c\gets (\alpha$ ? $r$ : $l$)
+	\State $lock(c)$
+	\State $S_{\max} \gets n.S_R;\,S_{\min} \gets n.S_L$
+	\State $snap \gets (\alpha$ ? $S_{\max}$ : $S_{\min})$
+	\State $lock(snap)$
+	\If {($\alpha \A snap.S_L \neq n) \O (!\alpha \A snap.S_R \neq n$)}
+		\State $unlockAll()$ \textbf{then} restart
+	\EndIf
+	\State $n.mark\gets true$
+	\State $(p.L = n$ ? $p.L$ : $p.R) \gets c$
+	\State $S_{\min}.S_R \gets S_{\max};\,S_{\max}.S_L \gets S_{\min}$ \label{alg:remove:child}
+	\State $unlockALl()$
+	\If {$AVL$} $\mathbf{rebalance}(p)$
+	\EndIf
+	\Return
+\EndIf
+
+\State $l \gets n.L;\,r\gets n.R;\,S_{\min} \gets n.S_L;\,S_{\max} \gets n.S_R$
+\State $lock(l, r, S_{\min}, S_{\max})$
+\If {$S_{\min}.S_R \neq l\,||\, S_{\min}.mark$}
+	\State $unlockAll()$ \textbf{then} restart
+\EndIf
+
+\If{$r.L = null$}
+	\State $n.mark \gets true$
+	\State $r.L \gets l;\,l.P \gets r;\,r.P\gets p$
+	\State $(p.L=n $ ? $p.L$ : $p.R) \gets r$
+	\State $S_{\min}.S_R \gets S_{\max};\,S_{\max}.S_L \gets S_{\min}$
+	\State $unlockALl()$
+	\If {$AVL$} $\mathbf{rebalance}(r)$
+	\EndIf
+	\Return
+\EndIf
+
+\State $s\gets S_{\max};\,p_s \gets s.P; \,r_s \gets s.R;\,({S_R})_s \gets s.S_R$
+\State $lock(s, p_s, r_s, ({S_R})_s)$
+\If {$s.S_L \neq n \,||\, s.mark || ({S_R})_s.S_L \neq s || ({S_R})_s.mark$}
+	\State $unlockAll()$ \textbf{then} restart
+\EndIf
+
+\State $n.mark\gets true$
+\State $s.R\gets r;\, r.P \gets s;\, s.L\gets l;\, l.P \gets s$
+\State $(p.L=n $ ? $p.L$ : $p.R) \gets s$
+\State $p_s.L\gets r_s$
+\If {$r_s\neq null$} $r_s\gets r_s$
+\EndIf
+\State $S_{\min}.S_R \gets S_{\max};\,S_{\max}.S_L \gets S_{\min}$
+\State $unlockALl()$
+\If {$AVL$} 
+\State $\mathbf{rebalance}(s);\,\mathbf{rebalance}(p_s)$
+\EndIf
+\end{algorithmic}
+\end{breakablealgorithm}
+
+\subsection{Rebalance}
+
+\begin{breakablealgorithm}
+\caption{Rebalance (node)}
+\label{alg:rebalance}
+\begin{algorithmic}[1]
+\State $p\gets n.P$
+\While {$n\neq root$}
+	\State $lock(p)$
+	\If{$n.P\neq p$}
+		\State $unlock(p)$
+		\If {$n.mark=true$} \Return
+		\EndIf
+	\EndIf
+	\State $lock(n)$
+	\If {$n.mark=true$} 
+		\State $unlockAll()$
+		\Return
+	\EndIf
+	\State $h' \gets \mathbf{height}(n)$
+	\State $bf \gets \mathbf{height}(n.L) - \mathbf{height}(n.R)$
+	\If {$h'\neq n.h$}
+		\State $n.h \gets h'$
+	\ElsIf {$bf \leq 1$}
+		\State $unlockAll()$ \textbf{then }\Return
+	\EndIf
+	\If {$bf>1$}
+		\State $c\gets n.R;\,g_c \gets c.L$
+		\State $lock(c)$
+		\State $bf_c \gets \mathbf{height}(c.L) - \mathbf{height}(c.R)$
+		\If{$bf_c < 0$}
+			\State $lock(g_c)$
+			\State \textbf{rotateRight}$(g_c, c, n$)
+			\State \textbf{rotateLeft}$(g_c, n, p$)
+			\State $unlockAll()$
+			\State $n\gets g_c$
+		\Else
+			\State \textbf{rotateLeft}$(c, n, p$)
+			\State $unlockAll()$
+			\State $n\gets c$
+		\EndIf
+	\ElsIf{$bf<-1$}
+		\State $c\gets n.L;\,g_c \gets c.R$
+		\State $lock(c)$
+		\State $bf_c \gets \mathbf{height}(c.L) - \mathbf{height}(c.R)$
+		\If{$bf_c > 0$}
+			\State $lock(g_c)$
+			\State \textbf{rotateLeft}$(g_c, c, n$)
+			\State \textbf{rotateRight}$(g_c, n, p$)
+			\State $unlockAll()$
+			\State $n\gets g_c$
+		\Else
+			\State \textbf{rotateRight}$(c, n, p$)
+			\State $unlockAll()$
+			\State $n\gets c$
+		\EndIf
+	\Else
+		\State $unlockAll()$
+		\State $n\gets p$
+		\State $p\gets n.P$
+	\EndIf
+\EndWhile
+\end{algorithmic}
+\end{breakablealgorithm}
+\subsection{Software Transactional Memory Implementation}
+\section{Performance Evaluation}
+\section{Discussion}
+
+\begin{thebibliography}{00}
+\bibitem{bron}
+Bronson, N. G., Casper, J., Chafi, H., Olukotu, K. (2014). A practical concurrent binary search tree. In PPoPP'14.
+
+\bibitem{crain-cont}
+Crain, T., Gramoli, V., Raynal, MA Contention-Friendly Binary Search Tree. In Euro-Par '13.
+
+\bibitem{crain-stm}
+Crain, T., Gramoli, V., Raynal, M. (2011) A transaction-friendly binary search tree.  [Research Report] PI-1984, pp.21. <inria-00618995v1>
+
+\bibitem{draschler-lo}
+Draschler, D., Vechev, M., Yahav, E. (2014) Practical Concurrent Binary Search Trees via Logical Ordering. In PPoPP'14.
+\end{thebibliography}
+\end{document}
