@@ -19,3 +19,21 @@ Note:
 ==================================================
 Note:
 	This implementation is can be used to create either an AVL tree or a BST tree. This concurrent data structure can be used for a lock-free contains and a deadlock-free remove and insert. 
+
+==================================================
+To create the three out of nine benchmarks for this concurrent data structure, run the following after compiling:
+	For 9%Insert/1%Remove/90%Contains
+		For BST:
+			./a.out 0 2000000 9 1 90
+		For AVL:
+			./a.out 1 2000000 9 1 90
+	For 20%Insert/10%Remove/70%Contains
+		For BST:
+			./a.out 0 2000000 20 10 70
+		For AVL:
+			./a.out 1 2000000 20 10 70
+	For 50%Insert/50%Remove/0%Contains
+		For BST:
+			./a.out 0 2000000 50 50 0 
+		For AVL:
+			./a.out 1 2000000 50 50 0 
