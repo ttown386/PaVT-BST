@@ -7,12 +7,13 @@ To compile from command line (Linux)
 	1. cd into directory
 	2. Type "g++ -std=c++11 -fgnu-tm SerialStmBst.cc Node.cc -lpthread"
 To run
-	1. type "./a.out [AVL] [TOTALOPS] [ADD] [REMOVE] [CONTAINS]
+	1. type "./a.out [AVL] [TOTALOPS] [ADD] [REMOVE] [CONTAINS] [SIZE]
 	2. AVL = 0 for BST and 1 for AVL
 	3. TOTALOPS = number of total operations by all threads
 	4. ADD = integer (0, 100) for percentage of insert operations
 	5. REMOVE = integer (0, 100) for percentage of remove operations
 	6. CONTAINS = integer (0, 100) for percentage of contain operations
+	7. SIZE = integer (1,2) for transaction size
 Note:
 	ADD + REMOVE + CONTAINS = 100. There is no guard against it so this condition must be met by the user to prevent undefined behavior
 
