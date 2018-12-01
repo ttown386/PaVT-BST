@@ -2,6 +2,23 @@
 	- C++11
 * make sure to run in a unix-like operating system. It requires the use of the posix library for pthreads. It was run in an ubuntu environment provided by windows App store.
 
+===================================================================================
+Data Structure
+===================================================================================
+It has 3 Methods:
+Insert(int data)
+Remove(int data)
+Contains(int data)
+
+To instantiate
+SerialStmBst *s = new SerialStmBst();
+
+For avl
+SerialStmBst *s = new SerialStmBst(true);
+
+To include:
+include header file SerialStmBst.h
+
 ==================================================
 To compile from command line (Linux)
 	1. cd into directory

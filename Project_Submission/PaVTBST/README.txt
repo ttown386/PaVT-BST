@@ -2,10 +2,30 @@
 	- C++11
 * make sure to run in a unix-like operating system. It requires the use of the posix library for pthreads. It was run in an ubuntu environment provided by windows App store.
 
+===================================================================================
+Data Structure
+===================================================================================
+It has 3 Methods:
+Insert(int data)
+Remove(int data)
+Contains(int data)
+
+To instantiate
+BinarySearchTree *s = new BinarySearchTree();
+
+For avl
+BinarySearchTree *s = new BinarySearchTree(true);
+
+To include:
+include header file BinarySearchTree.h
+
+
+=================================================
+Testing
 ==================================================
 To compile from command line (Linux)
 	1. cd into directory
-	2. Type "g++ -std=c++11 SerialStmBst.cc Node.cc -lpthread"
+	2. Type "g++ -std=c++11 BinarySearchTree.cc Node.cc -lpthread"
 To run
 	1. type "./a.out [AVL] [TOTALOPS] [ADD] [REMOVE] [CONTAINS]
 	2. AVL = 0 for BST and 1 for AVL

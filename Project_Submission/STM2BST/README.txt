@@ -2,10 +2,27 @@
 	- C++11
 * make sure to run in a unix-like operating system. It requires the use of the posix library for pthreads. It was run in an ubuntu environment provided by windows App store.
 
+===================================================================================
+Data Structure
+===================================================================================
+It has 3 Methods:
+Insert(int data)
+Remove(int data)
+Contains(int data)
+
+To instantiate
+STMBst *s = new STMBst();
+
+For avl
+STMBst *s = new STMBst(true);
+
+To include:
+include header file STMBst.h
+
 ==================================================
 To compile from command line (Linux)
 	1. cd into directory
-	2. Type "g++ -std=c++11 -fgnu-tm SerialStmBst.cc Node.cc -lpthread"
+	2. Type "g++ -std=c++11 -fgnu-tm STMBst.cc Node.cc -lpthread"
 To run
 	1. type "./a.out [AVL] [TOTALOPS] [ADD] [REMOVE] [CONTAINS]
 	2. AVL = 0 for BST and 1 for AVL
