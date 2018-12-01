@@ -94,17 +94,13 @@ Orlando, FL \\}
 \maketitle
 
 \begin{abstract}
-We introduce our reimplementation of what is considered a practical and concurrent binary search tree that maintains logical ordering information within the data structure, but our implementation will be transformed and compared against a transactional data structure. A transactional data structure will be implemented using software transactional memory which provides a system for executing atomic sections of code instead of using locks. This will allow for users to monitor memory locations that threads read and write to.
+
 \end{abstract}
 
-\begin{IEEEkeywords}
-Search Trees, Concurrency, AVL, Data Structures
-\end{IEEEkeywords}
-
 \section{Introduction}
-With the increase in the number of cores on the processor, concurrent datastructures become the foundation to which these cores may be utilized otherwise they become a bottleneck of contention \cite{crain-cont}. Implementing concurrent search trees becomes challenging when modification to the tree can cause relocation of some of the nodes, especially when the trees are optimized for read operations \cite{draschler-pavt}.
+With the increase in the number of cores on the processor, concurrent datastructures become the foundation to which these cores may be utilized otherwise they become a bottleneck of contention \cite{crain-cont}. Implementing concurrent search trees becomes challenging when modification to the tree can cause relocation of some of the nodes, especially when the trees are optimized for read operations \cite{pavt}.
 
-The Draschler-Cohen et al. of \cite{draschler-pavt} provide a necessary and sufficient condition for path validation in traversals which they call \textit{PaVT} condition. This condition applies to \textit{any} search tree can validate whether a key is present in the tree or not. They demonstrate that the using the PaVT condition with a Binary Search Tree (BST) and an AVL tree, the out performs existing solutions using a lock-free contains on search-based data structures.
+Draschler-Cohen et al. of \cite{pavt} provide a necessary and sufficient condition for path validation in traversals which they call \textit{PaVT} condition. This condition applies to \textit{any} search tree can validate whether a key is present in the tree or not. They demonstrate that the using the PaVT condition with a Binary Search Tree (BST) and an AVL tree, the out performs existing solutions using a lock-free contains on search-based data structures.
 
 However, evaluating this condition leveraging software transacitonal memeory to manage concurrent accesses has not yet been shown. Concurrent trees using STM are easy to implement and scale well, but STM introduces overhead and where high contention exists still requires some reasearch \cite{bron}. Transactional memory removes the complexity of locks \cite{b4}. Balancing the usefulness of the simple resource sharing and performance is a hard task and the transactional memory implementation emulates just how much has to be sacrificed for reduced complexity. Transactional memory can significantly lower the possibility of data races and deadlocks \cite{b4}.
 
@@ -138,7 +134,7 @@ Maintaing a full path is difficult as part of the path may have an inconsistency
 	\item For every $(n_i, c_i), (n_j, c_j) \in S$ such that $j > i$ and for every key $k$, $c_j(n_j, k)$ does not imply $c_i(n_i, k)$ for some valid key w.r.t. $S$ of $n_i$.
 \end{enumerate}
 \end{definition}
-The validation of an SPS is not only sufficient but necessary for unsuccessful traversals. The author's state that for BST's, the snapshots can be optimized by observing that for any node $n$, that $n$'s left snapshot $S_L$, and $n$' right snapshot $R_L$ consist of its predecessor and successor, respectively,  in the logical ordering of the tree \cite{draschler-lo}. Our implementation uses pointers to maintain a reference to the predecessor and successor for a node. In order to ensure that all node's snapshots are of the same size, sentinel nodes are used to maintain order.
+The validation of an SPS is not only sufficient but necessary for unsuccessful traversals. The author's state that for BST's, the snapshots can be optimized by observing that for any node $n$, that $n$'s left snapshot $S_L$, and $n$' right snapshot $S_R$ consist of its predecessor and successor, respectively,  in the logical ordering of the tree \cite{draschler-lo}. Our implementation uses pointers to maintain a reference to the predecessor and successor for a node. In order to ensure that all node's snapshots are of the same size, sentinel nodes are used to maintain order.
 
 \subsection{Correctness}
 Correctness of maintaining snapshots follows from the fact that if an update to a path is occuring, all locks must be acquired before the operation. Therefore, the snapshots are guaranteed to reflect those of the path. 
@@ -146,7 +142,9 @@ Correctness of maintaining snapshots follows from the fact that if an update to 
 Snapshots are read and written to atomically which allows them to be linearized. The linearization point for a snapshot is the moment it is an SPS of a path in the tree. These snapshots can be linearized with respect to the operations. If the snapshot were to contain a node that has been removed, it is linearized just prior to the removal. If the snapshot does not contain a node that is now reachable via an insertion, it is linearized just before it was added. The idea is that if the snapshot has been read, then it is from a path that existed in the tree, and the fact that it is read means that the operating thread performing a mutation has not completed it's operation. 
 \section{Data Structure Design Principles}
 
-The author's paper presented the topic of \textit{PaVT} and provided little detail on the implementation of the data structure. Available pseudocode was used to construct the methods necessary for the BST data structure. Since only a brief description of the AVL rebalancing property was mentioned, an attempt to construct the AVL function was taken. We contacted the author's about some synchronization issues not explicitly stated in the paper, particularly about updating snapshots. As of Nov. 8, 2018, the source code for the author's implementation is available at {https://github.com/logicalordering/trees}. We borrowed the syncrhonization for snapshots, particuarly, for removal from their source code. Thus our source code is an amalgam of their pseudo and source code. In the following subsections, we will discuss the design of our implementation, including the main algorithms.
+The author's paper presented the topic of \textit{PaVT} and provided little detail on the implementation of the data structure. Available pseudocode was used to construct the methods necessary for the BST data structure. Since only a brief description of the AVL rebalancing property was mentioned, an attempt to construct the AVL function was taken. We contacted the author's about some synchronization issues not explicitly stated in the paper, particularly about updating snapshots. As of Nov. 8, 2018, the source code for the author's implementation is available at {https://github.com/logicalordering/trees}. We borrowed the syncrhonization for snapshots, particuarly, for removal from their source code. Thus our source code is an amalgam of their pseudo and source code. 
+
+Notable changes we made were to only use the traverse algorithm on the node to be inserted and removed. The author's provide in the pseudocode to use traverse to reach the successor for the node being removed. Since snapshots are stored as pointers in nodes, we simply get access to the successor via the pointer. This prevents performing a second optimistic lock on the successor's parent as mentioned in the following sections. In the following subsections, we will discuss the design of our implementation, including the main algorithms.
 
 \subsection{Tree Structure}
 Our tree structure implements both the Binary Search Tree ordering property, but provides a boolean argument to the constructor to specify the AVL structure property. The AVL operation \textbf{rebalance} is performed at the end of the \textbf{insert} and \textbf{remove} operations of the tree. This allowed the code to follow the \textit{DRY} principle. The remaining functions \textbf{traverse} and \textbf{contains} are almost identical except that \textbf{traverse} will lock the node to be returned while \textbf{contains} returns a boolean value.
@@ -155,9 +153,8 @@ The tree has four member variables; three of \textit{Node} and the fourth is the
 
 We store the snapshots of the node as atomic pointers. This allows the snapshots to be linearized when they are read. Each node also a parent pointer as well as left and right pointers to its children, which allows traversing up the tree. A height field is provided to store the current height of the tree. A tree with no node has height $-1$, a single node, 0, and the height of the tree is the maximum of the left, and right subtrees + 1.
 
-The tree has four member variables; three of \textit{Node} and the fourth is the \textit{AVL} boolean. Two of the three pointers are sentinel nodes. The sentinel nodes are represented as the maximum and minimum, signed 32-bit integers in C. This does give some restriction on the number of keys to use, but this was done as the testing environment would only handle a maximum of 5,000,000 nodes. The snapshots of the sentinel nodes contained each other. The minimum sentinel was the parent of the max sentinel and the max sentinel was also the root of the tree, the third pointer.
+The tree has four member variables; three of \textit{Node} and the fourth is the \textit{AVL} boolean. Two of the three pointers are sentinel nodes. The sentinel nodes are represented as the maximum and minimum, signed 32-bit integers in C. This does give some restriction on the number of keys to use, but this was done as the testing environment would only handle a maximum of 4,000,000 nodes. The snapshots of the sentinel nodes contained each other. The minimum sentinel was the parent of the max sentinel and the max sentinel was also the root of the tree, the third pointer.
 \begin{figure}[t]
-\label{fig:node}
 \centering
 \begin{lstlisting}
 class Node {
@@ -173,6 +170,7 @@ class Node {
 }
 \end{lstlisting}
 \caption{The Node data structure implemented within the BinarySearchTree class}.
+\label{fig:node}
 \end{figure}
 
 \subsection{Locking Protocol}
@@ -279,6 +277,11 @@ Algorithm \ref{alg:remove} traverses to the node to be removed. If $n.k\neq key$
 \item $r$ has a left subtree which contains $n$'s successor $s$
 \end{enumerate}
 The first case is simple as all locks are acquired. The node is marked and the snapshots are updated, $S_{max}$, and $S_{min}$. The corresponding snapshot and $p$ snaps are updated to contain each other as seen starting at line \ref{alg:remove:leaf}. If $n$ has one child, then $c$ takes $n$'s place. Now $n$'s snapshots will be updated to contain each other at line \ref{alg:remove:child}. If the node has 2 children, but $r.L = null$, then $r$ is $n$'s successor and $r$ takes $n$'s place. The most difficult remove is derived when $s$ is in $r$'s left subtree. However, since $r$ has a reference to it, locking the node is done directly along with $s$'s parent $p_s$, its right child, $r_s$, and $s$'s right snapshot $(S_R)_s$. These are locked using the locking order. It is important to check conditions such that $s.P \neq r$ since $r$'s lock is acquired. If this is carried out then the thread will block itself. After acquiring all the locks, the removal can take place and the snapshots are updated at line \ref{alg:remove:hard:snap}. Snapshots during a remove require the left and right snapshots of $n$ to update such that $S_L.S_R = S_R.S_L$. This removes $n$ from the logical ordering. $AVL$ rebalancing is performed at the end of the algorithm if necessary. Since the algorithm only proceeds once all locks are acquired, $remove$ is linearized when the node is marked. If \textbf{contains} returns true on $n$, then the node has not been marked. If the node is found marked, then the operation simply restarts.
+
+To reduce the amount of code in Algorithm \ref{alg:remove}, \textbf{rebalance} was ommited. It is called immediately after the $unlockAll()$ after a when the marked node is physically removed. The node to rebalance are the nodes where the end of the path has changed. For case 1) and 2), the parent $p$, for case 3), the child $c$, and for case 4), the successor $s$ and successor's parent $p_s$.
+
+The linearization point occurs once the node is marked. At this point, any traversal will find the node marked. Because locks are acquired before any insertion or other deletion can take place, the waiting thread will observed the marked node and will restart its operation. A contains linearizes from the linearization of the snapshots as mentioned earlier.
+
 \begin{algorithm}[th]
 \caption{Remove (key)}
 \label{alg:remove}
@@ -298,9 +301,7 @@ The first case is simple as all locks are acquired. The node is marked and the s
 	\Else
 		\State $p.R \gets null;\,p.S_R \gets S_{\max};\, S_{\max}.S_L \gets p$
 	\EndIf
-	\State $unlockALl()$
-	\If {$AVL$} $\mathbf{rebalance}(p)$; \Return
-	\EndIf 
+	\State $unlockALl();$ \Return;
 \EndIf
 
 \If {$n$ has one child}
@@ -314,9 +315,7 @@ The first case is simple as all locks are acquired. The node is marked and the s
 	\State $n.mark\gets true$
 	\State $(p.L = n$ ? $p.L$ : $p.R) \gets c$
 	\State $S_{\min}.S_R \gets S_{\max};\,S_{\max}.S_L \gets S_{\min}$ \label{alg:remove:child}
-	\State $unlockALl()$
-	\If {$AVL$} $\mathbf{rebalance}(p)$
-	\EndIf
+	\State $unlockALl();$
 	\Return
 \EndIf
 
@@ -331,9 +330,7 @@ The first case is simple as all locks are acquired. The node is marked and the s
 	\State $r.L \gets l;\,l.P \gets r;\,r.P\gets p$
 	\State $(p.L=n $ ? $p.L$ : $p.R) \gets r$
 	\State $S_{\min}.S_R \gets S_{\max};\,S_{\max}.S_L \gets S_{\min}$
-	\State $unlockALl()$
-	\If {$AVL$} $\mathbf{rebalance}(r)$
-	\EndIf
+	\State $unlockALl();$
 	\Return
 \EndIf
 
@@ -347,17 +344,55 @@ The first case is simple as all locks are acquired. The node is marked and the s
 \State $s.R\gets r;\, r.P \gets s;\, s.L\gets l;\, l.P \gets s$
 \State $(p.L=n $ ? $p.L$ : $p.R) \gets s$
 \State $p_s.L\gets r_s$
-\If {$r_s\neq null$} $r_s\gets r_s$
+\If {$r_s\neq null$} $r_s.P\gets p_s$
 \EndIf
 \State $S_{\min}.S_R \gets S_{\max};\,S_{\max}.S_L \gets S_{\min}$ \label{alg:remove:hard:snap}
 \State $unlockALl()$
-\If {$AVL$} 
-\State $\mathbf{rebalance}(s);\,\mathbf{rebalance}(p_s)$
-\EndIf
 \end{algorithmic}
 \end{algorithm}
 
 \subsection{Rebalance}
+
+\begin{figure*}[t]
+ \centering
+\begin{minipage}{0.49\textwidth}
+\begin{lstlisting}
+void insert(int const &data){
+
+  while (true) {
+  
+    __transaction_atomic{
+    	n = traverse(root, data)
+      /* Do insert op */
+      if (isAvl) rebalance(n);
+    }
+  }
+}  
+\end{lstlisting}
+\textbf{(a) Initial Implementation. Entire function is encapsulated in atomic block.}
+\end{minipage}
+\begin{minipage}{0.49\textwidth}
+{\begin{lstlisting}
+void insert(int const &data){
+
+  while (true) {
+    n = traverse(root, data)
+    __transaction_atomic{
+			/* Check snapshots */
+      /* Do insert op */
+    }
+   	if (isAvl) rebalance(n);
+  }
+}  
+\end{lstlisting}
+}
+\textbf{(b) Second Implementation. Traverse and Rebalance function are decoupled from write operations.}
+\end{minipage}
+\caption{Implementing the atomic\_transaction block in the data structure}
+\label{fig:stm:imp}
+\end{figure*}
+
+
 The \textbf{rebalance} operation is implemented based on the author's description \cite{pavt}. This algorithm starts at the specified node, $n$ and traversed to the root. It grabs it's parent, $p$, and lock's both in the described locking order. If now calculates the node's height, $h'$, and check if its member variable height, $n.h$ is different. If so, there has been a mutation, and the new height is updated. The balance factor is calculated $bf$, which is the difference between the left and right subtrees. If the height has not changed and $|bf|<2$, then we return which is our implementation of the relaxed rebalancing. Rather than traversing entirely to the root. If $bf\geq 2$, then we must rotate. Helper functions \textbf{rotateLeft()} and \textbf{rotateRight} are implemented to carry this out. If $bf<-1$ and the left child of $n$ has a positive balance factor, then a double rotation is required, and conversely for $bf>1$. The nodes necessary for this operation will be the child and its grandchild. Locks are acquired from parent to grandchild. Since the rotations will now reorder the nodes, the locking order changes when they are released. The code is implemented in a straight forward manner to illustrate this. However, rotations for $m$-arry trees perserve the logical ordering which in turn preserves the snapshots, hence they will not need to be updated. If an insert or remove is interacting with this operation, the linearization point of this occurs once all the locks are released for every traversal up the tree. For a contains, the linearization point occurs during the last rotation. Any incorrect traversal will be reflected by the snapshots.
 %
 %\begin{breakablealgorithm}
@@ -424,44 +459,6 @@ The \textbf{rebalance} operation is implemented based on the author's descriptio
 %\end{breakablealgorithm}
 
 \subsection{STM Implementation}
-\begin{figure*}[t]
- \centering
-\begin{minipage}{0.49\textwidth}
-\begin{lstlisting}
-void insert(int const &data){
-
-  while (true) {
-  
-    __transaction_atomic{
-    	n = traverse(root, data)
-      /* Do insert op */
-      if (isAvl) rebalance(n);
-    }
-  }
-}  
-\end{lstlisting}
-\textbf{(a) Initial Implementation. Entire function is encapsulated in atomic block.}
-\end{minipage}
-\begin{minipage}{0.49\textwidth}
-{\begin{lstlisting}
-void insert(int const &data){
-
-  while (true) {
-    n = traverse(root, data)
-    __transaction_atomic{
-			/* Check snapshots */
-      /* Do insert op */
-    }
-   	if (isAvl) rebalance(n);
-  }
-}  
-\end{lstlisting}
-}
-\textbf{(b) Second Implementation. Traverse and Rebalance function are decoupled from write operations.}
-\end{minipage}
-\caption{Implementing the atomic\_transaction block in the data structure}
-\end{figure*}
-
 \subsubsection{GCC Transactional Memory}
 GCC's STM framework is used for the STM BST implementation. GCC transactional memory is used to create blocks of code that will be executed atomically. If another transaction block (or thread) causes a conflict on a memory access with the current block then we abort and rollback all modifications and try the transaction. This transactional memory also has specific properties associated with it as well that can be applied to any variable or function. The two properties are defined as transaction safe and transaction unsafe. For the transaction unsafe property, it is assumed if the code has or contains the following \cite{b4}:
 \begin{itemize}
@@ -476,28 +473,14 @@ The transaction safe property, however, will be allowed to execute inside the at
 
 \subsubsection{Implementation Breakdown}
 
-then modifying it by surrounding code that will be shared or expected to be modified by other threads in a transaction atomic block. The sequential version of the GCC transactional memory implementation used this style, but in a very broad sense. The sequential implementation involved the removal of all atomic wrappings, so no atomic variables, and the removal of all mutexes, so removing all locks and unlock calls from the code as well. These two actions plus inserting a transactional block of code for all of our function lead to the following sequential implementation for insert:
+GCC TM uses \texttt{\_\_atomic\_transaction} blocks to wrap the code that must be execcuted atomically. As stated before, in order to convert the data structure to implement STM, the node class removes the atomic wrappers from the snapshots as well as the mutex as they are not transaction safe. The node class is an external class to the BST data structure which required all fields and methods to be marked \texttt{transaction\_safe}. 
 
-Implementing the most basic form of transactional memory was simple and straight forward, but increasing the performance was tricky. so that the transactions are smaller. It is implemented such that the transactions are light weight to ensure that when a transaction does fail it won't have to retry more code than it has to. The improvements made to the original implementation was removing transactions from contains and traverse since they do no write operations. Another change made was to decouple the traverse from the insert and remove. This small change made it, so the implementation doesn't have to retraverse the tree. Some checks have been inserted as a result to ensure that the current node that is being worked on is still a valid option. Another modification made to increase performance was the decoupling of rebalance from insert and remove to increase performance of AVL tree operations. Before it would
+The intial implementation required wrapping the entire \textbf{insert} and \textbf{remove} functions in the atomic block as seen in FIgure \ref{fig:stm:imp}(a). Due to the PaVT condition, the contains method only required reading the snapshots atomically, so line \ref{alg:contains:snap} would be wrapped in the atomic block. All helper function would be enclosed in the atomic blocks.
+
+The Improved STM implementation required two important changes to the code. The first would be decouple the \textbf{traverse} algorithm from \textbf{insert} and \textbf{remove}. The second would be to decouple \textbf{rebalance} from the aforementioned functions as well. This can be seen in Figure \ref{fig:stm:imp}(b). The former required checking the snapshots after the node has been locked and returned. This resulted in a synchronization-free traversal. The former required more organization in the removal section. Pointers to the nodes to be rebalanced were intialized at the start of the function. Depending on the removal the pointers were set to those values and if they pointers were not $null$, they would be rebalanced. In order to syncrhonize \textbf{rebalance}, the traversal from the node to the root would need to be decoupled from the atomic reads and write performed on the height and the structural layout of the tree. 
 
 
 \section{Performance Evaluation}
-Testing the implementation was done on Intel(R) Core(TM) i5-4460 CPU @ 3.2GHz with: Max Memory Bandwidth 25.6 GB/s, Number of Cores 4, Number of Threads 4, 6 MB SmartCache, 24.0 GB RAM, 64 - bit Windows OS, Run through Ubuntu terminal shell for Windows. It should be noted that the performance is expected to significantly decrease across all platforms when the number of threads increase past four because of hardware limitations. The concurrent data structure is expected to do significantly better than the software and improved software data structure because of how transactional memory operates. The number of benchmarks was three and those three were:
-\begin{itemize}
-\item 9\% Insert, 1\% Remove, 90\% contains
-\item 20\% Insert, 10\% Remove, 70\% contains
-\item 50\% Insert, 50\% Remove, 0\% contains
-\end{itemize}
-This was carried out by providing 5,000,000 operations for the threads to perform, overall. Each tree was populated to its expected capacity. That is for test 1, the tree would be at 90\% expected capacity or 450,000 nodes, 2/3 capacity, and 50\% capacity, respectively for the last two.
-
-\subsection{Concurrent Data Structure}
-The results for the lock-based concurrent data structure can be seen in Figure \ref{fig:data}. The AVL tree outperforms BST in most scenarios due to the $O(n\lg n)$ traversals from rebalancing. Where the performance decreases is when rebalancing will get called more often and cause threads to lock nodes that other threads require. Another possible reason why the performance starts to equalize around 50\% contains and removes is because of how costly it is to remove non-leaf nodes. Any leaf node will require at most two locks, while removals of non-leaf nodes could require up to nine. In BST's, the removal and insertion have a much higher chance of creating leaf nodes. The number of leaf nodes in AVL tree is significantly lower due to rebalancing. In fact the upper bound for a balanced BST is $O(n/2)$ leaf nodes. The performance for 50\% inserts and removes demonstrates that with a rebalancing operation performance is not particuarly enhanced. With a 90\% contains ratio, the AVL tree can handle up to 10 MOps/sec.
-
-\subsection{Software Transactional Memory Data Structure}
-
-\subsection{Improved Software Transactional Memory Data Structure}
-
-
 \begin{figure*}[t]
  \centering
 \begin{minipage}{0.33\textwidth}
@@ -525,9 +508,31 @@ The results for the lock-based concurrent data structure can be seen in Figure \
  \subcaptionbox{Modified STM}
  {\includegraphics[width =1\linewidth]{figures/stm2-50-50-0.png}}
 \end{minipage}
-\label{fig:data}
 \caption{The performance results of all tests with each of the three data structure implementations.}
+\label{fig:data}
 \end{figure*}%
+Testing the implementation was done on Intel(R) Core(TM) i5-4460 CPU @ 3.2GHz with: max memory bandwidth 25.6 GB/s, 4 cores and 4 threads along with a  6 MB SmartCache. 24.0 GB RAM was available, and the evaluation was run through Ubuntu 18.04 shell VM on a 64 - bit Windows OS. It should be noted that the performance was expected to decrease past the 4 thread count due to hardware limitations. Improving the available threads, and extend to hypthreading could increase the overall performance of the data structure.
+
+The benchmarks used to test follow the standard empirical evalution which are:
+\begin{itemize}
+\item 9\% Insert, 1\% Remove, 90\% contains
+\item 20\% Insert, 10\% Remove, 70\% contains
+\item 50\% Insert, 50\% Remove, 0\% contains
+\end{itemize}
+This was carried out by providing 2,000,000 operations for the threads to perform, overall. Each tree was populated to its expected capacity. That is for test 1, the tree would be at 90\% expected capacity or 450,000 nodes, 2/3 capacity, and 50\% capacity, respectively for the last two.
+
+\subsection{Concurrent Data Structure}
+The results for the lock-based concurrent data structure can be seen in Figure  \ref{fig:data}. The AVL tree outperforms BST in most scenarios due to the $O(n\lg n)$ traversals from rebalancing. It can be seen that as the number of remove operations increases, Any leaf node will require at most two locks, while removals of non-leaf nodes could require up to nine. In BST's, the removal and insertion have a much higher chance of creating leaf nodes. The number of leaf nodes in AVL tree is significantly lower due to rebalancing. In fact the upper bound for a balanced BST is $O(n/2)$ leaf nodes. The performance for 50\% inserts and removes demonstrates that with a rebalancing operation performance is not particuarly enhanced. With a 90\% contains ratio, the AVL tree can handle up to 10 MOps/sec.
+
+\subsection{Software Transactional Memory Data Structure}
+Our software transactional memory data structure performance is shown by Figure \ref{fig:data}. The performance of AVL is higher than BST in all scenarios with the exception of the 50\% removes and inserts scenario. This is due to the costly nature of rebalancing in AVL, which allowed BST to be on equal terms when using 1 or 2 threads. The performance in all three graphs are significantly lowered when moving from 4 to 8 threads. The reason being for this is that the hardware has limited how well the threads can process these atomic transaction. This hardware limitation increases the chance of a transaction not completing because a single processor starting two different transactions will cause one of them to stall. Furthermore, if both transactions have any conflicts and one finishes then it will cause the other to fail and restart. This leads into a massive increase in failed atomic transactions and is the reason for this decline in the graph. A reason for AVL outperforming BST in most scenarios is due to the fast traverse and contains operations since the graph is more balanced as shown by (b) and (e) in Figure \ref{fig:data}. Traverse and contains are both faster in AVL trees because having fewer leaf nodes and a more compact tree, which is due to rebalancing, means threads won't have to go far to find their target.
+
+
+\subsection{Improved Software Transactional Memory Data Structure}
+In the results shown for our improved software transactional memory in Figure \ref{fig:data}, BST has overtaken AVL in most scenarios, where the only exception being 1 or 2 threads being used in Figure \ref{fig:data} (c). This may be due to decoupling traverse from the atomic transaction block. This allowed for insert and remove transactions to not restart completely or don't restart while traversing. AVL and BST performs worse in both STM and Modified STM implementations because changing snapshots can cause transactions to restart since snapshots are updated in both insert and remove. This maks Decoupling traverse is one reason why the performance for 8 threads for BST in Figure \ref{fig:data} (c) can do about 3.5 million more operations per second than in (f). 
+
+Decoupling rebalance was another improvement, but its impact is far less when compared to the traverse improvement. This is exemplified by how much of an improvement BST gains, so AVL should gain a similar improvement from this change, however there isn't as noticable of a change in AVL even though two improvements have been made. Part of this reason is that the \textbf{rebalance} function is a bottleneck of contention \cite{bron}. The relaxed rebalancing performed in \cite{bron} used only right rotations which indicates that our implementation may be sub-optimal for STM implimentations.
+
 
 \section{Discussion}
 \subsection{Analysis Summary}
@@ -537,16 +542,17 @@ The locking PaVT BST and AVL trees should to be highly scalable for the architec
 Providing synchronization in updating the snapshots proved to be a challenging aspect due to the few details provided by the author's. Their previous work with the logical ordering provided an initial starting point on how to maintain the snapshots. After contacting the authors, the algorithm became very simple to implement. The following difficulty that arose from synchronization came from the lock management of the removal method. There were two defining challenges with the locking protocol in \textbf{remove()}: (1) Managing locks that have already have been acquired. Although previously mentions in the details of \textbf{remove()}, there are some instances where two locks are needed that pertain to the same node (i.e., locking the successor's parent $p_s$ and $n$'s right child, $r$, which are the same node). The second difficulty came from preserving locking order upon releasing locks. This was addressed by providing Boolean to indicate if the lock needed to be locked (from a case of the first challange). This created code bloat which was solved by the STM implementations. The locking order became a problem during the rebalancing operations as the locking order changed with rotations. The design of the \textbf{rebalance} function was designed to address this problem to easily determine which locks would need to be unlocked first.
 
 \begin{thebibliography}{00}
-\bibitem{b1} D. Drachsler-Cohen, M. Vechev, and E. Yahav. 2018. Practical concurrent traversals in search trees. In Proceedings of the 23rd ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming (PPoPP '18). ACM, New York, NY, USA, 207-218. DOI: https://doi.org/10.1145/3178487.3178503
 
+\bibitem{crain-cont}
+Crain, T., Gramoli, V., Raynal, MA Contention-Friendly Binary Search Tree. In Euro-Par '13.
 
-\bibitem{b4} V. Luchangco, J. Maurer, M. Moir, H. Boehm, J. Gottschlich, M. Michael, T. Riegel, M. Scott, T. Shpeisman, M. Spear, M. Wong, "Transactional Memory Support for C++",[online document], 2013. Available: JtC1/SC22 subcommittee, http://www.open-std.org [Accessed: November 29, 2018]
+\bibitem{pavt} D. Drachsler-Cohen, M. Vechev, and E. Yahav. 2018. Practical concurrent traversals in search trees. In Proceedings of the 23rd ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming (PPoPP '18). ACM, New York, NY, USA, 207-218. DOI: https://doi.org/10.1145/3178487.3178503
 
 \bibitem{bron}
 Bronson, N. G., Casper, J., Chafi, H., Olukotu, K. (2014). A practical concurrent binary search tree. In PPoPP'14.
 
-\bibitem{crain-cont}
-Crain, T., Gramoli, V., Raynal, MA Contention-Friendly Binary Search Tree. In Euro-Par '13.
+\bibitem{b4} V. Luchangco, J. Maurer, M. Moir, H. Boehm, J. Gottschlich, M. Michael, T. Riegel, M. Scott, T. Shpeisman, M. Spear, M. Wong, "Transactional Memory Support for C++",[online document], 2013. Available: JtC1/SC22 subcommittee, http://www.open-std.org [Accessed: November 29, 2018]
+
 
 \bibitem{crain-stm}
 Crain, T., Gramoli, V., Raynal, M. (2011) A transaction-friendly binary search tree.  [Research Report] PI-1984, pp.21. <inria-00618995v1>
