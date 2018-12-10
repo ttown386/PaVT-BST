@@ -43,15 +43,10 @@ BinarySearchTree::BinarySearchTree(bool isAvl) {
   maxSentinel->leftSnap = minSentinel;
   minSentinel->rightSnap = maxSentinel;
 
-  // Sentinel Conditions
-  maxSentinel->sentinel = true;
-  minSentinel->sentinel = true;
-
   this->root = maxSentinel;
 }
 
 BinarySearchTree::~BinarySearchTree() {
-//  delete root;
   delete minSentinel;
 }
 
@@ -59,15 +54,23 @@ Node *BinarySearchTree::getRoot() {
   return root;
 }
 
-int BinarySearchTree::nextField(Node *node, int const &data) {
+Node *BinarySearchTree::getMinSentinel() {
+	return minSentinel;
+}
 
-  // c1(node, data) = L
-  if (data<node->getData()) return LEFT;
+Node *BinarySearchTree::getMaxSentinel() {
+	return maxSentinel;
+}
 
-  // c2(node, data) = R
-  if (data>node->getData()) return RIGHT;
+int BinarySearchTree::nextField(Node *node, int const &key) {
 
-  // c3(node, data) = null;
+  // c1(node, key) = L
+  if (key<node->getKey()) return LEFT;
+
+  // c2(node, key) = R
+  if (key>node->getKey()) return RIGHT;
+
+  // c3(node, key) = null;
   return HERE;
 }
 
@@ -75,19 +78,19 @@ int BinarySearchTree::nextField(Node *node, int const &data) {
 /**
  * Traverse to node and lock it. If tree contains node, we attempt to
  * lock the node. Check if marked. If not, the last node is the one to be 
- * inserted. Check if the key(data) is in the snapshos of the node. If not
+ * inserted. Check if the key(key) is in the snapshos of the node. If not
  * restart the traversal.
  * 
  * @param  node Starting node
- * @param  data key value to search for
+ * @param  key key value to search for
  * @return      The last node in the traversal which is now locked.
  */
-Node *BinarySearchTree::traverse(Node *node, int const &data) {
+Node *BinarySearchTree::traverse(Node *node, int const &key) {
 	bool restart = false;
 	while (true) {
 
 		Node *curr = root;
-		int field = nextField(curr, data);
+		int field = nextField(curr, key);
 
 		// traverse
     Node *next = curr->get(field);
@@ -95,7 +98,7 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
 
 			curr = next;
 
-			field = nextField(curr, data);
+			field = nextField(curr, key);
 
 			// We have found node
 			if (field == HERE) {
@@ -120,11 +123,11 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
 		curr->lock.lock();
 		// grab snapshot
 		// check if restart is needed
-		bool goLeft = (data < curr->getData() ? true : false);
+		bool goLeft = (key < curr->getKey() ? true : false);
 		Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
 		if (curr->mark || 
-      (goLeft && (data <= snapShot->getData())) ||
-			(!goLeft && (data >= snapShot->getData()))) {
+      		(goLeft && (key <= snapShot->getKey())) ||
+			(!goLeft && (key >= snapShot->getKey()))) {
 			curr->lock.unlock();
 			continue;
 		}
@@ -139,18 +142,18 @@ Node *BinarySearchTree::traverse(Node *node, int const &data) {
  * no node is inserted
  *
  * 
- * @param data key to be inserted into tree
+ * @param key key to be inserted into tree
  */
-void BinarySearchTree::insert(int const &data) {
+void BinarySearchTree::insert(int const &key) {
 
   // Continue to attempt insertion
   while (true) {
 
     // traverse and lock node
-    Node *curr = traverse(root, data);
+    Node *curr = traverse(root, key);
   
     // We have a duplicate
-    if (curr->getData()== data) {
+    if (curr->getKey()== key) {
       curr->lock.unlock();
       return;
     }
@@ -158,19 +161,19 @@ void BinarySearchTree::insert(int const &data) {
     
     // No longer a leaf node
     if (
-      (data > curr->getData() && curr->getRight()!=nullptr) ||
-      (data < curr->getData() && curr->getLeft()!=nullptr)) {
+      (key > curr->getKey() && curr->getRight()!=nullptr) ||
+      (key < curr->getKey() && curr->getLeft()!=nullptr)) {
 
       curr->lock.unlock();
       continue;
     }
     
     // Insert node and update parent
-    Node *newNode = new Node(data);
+    Node *newNode = new Node(key);
     newNode->setParent(curr);
 
     // Copy snaps from parent
-    bool parentIsLarger = data < curr->getData();
+    bool parentIsLarger = key < curr->getKey();
     Node *snapshot = (parentIsLarger ? curr->leftSnap.load() : curr->rightSnap.load());
 
 
@@ -210,9 +213,9 @@ void BinarySearchTree::insert(int const &data) {
 /**
  * BinarySearchTree::remove Removes node from tree. If node is not present then the
  * call returns. 
- * @param data The key to be removed from the tree
+ * @param key The key to be removed from the tree
  */
-void BinarySearchTree::remove(int const &data) {
+void BinarySearchTree::remove(int const &key) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
@@ -221,11 +224,11 @@ void BinarySearchTree::remove(int const &data) {
   while (true) {
 
     // Grab node
-    Node *curr = traverse(root, data);
+    Node *curr = traverse(root, key);
 
     // Already checked snapshots so return if current
     // node is not one to be deleted
-    if (curr->getData()!= data) {
+    if (curr->getKey()!= key) {
       curr->lock.unlock();
       return;
     }
@@ -251,7 +254,7 @@ void BinarySearchTree::remove(int const &data) {
     
     Node *leftChild = curr->getLeft();
     Node *rightChild = curr->getRight();
-    bool parentIsLarger = (parent->getData() > data ? true : false);
+    bool parentIsLarger = (parent->getKey() > key ? true : false);
     
     /*  A leaf node */
     if (leftChild== nullptr && rightChild == nullptr) {
@@ -525,15 +528,15 @@ void BinarySearchTree::remove(int const &data) {
 
 /**
  * BinarySearchTree::contains Returns true if tree contains node and false otherwise
- * @param  data key to search for
+ * @param  key key to search for
  * @return      A boolean value
  */
-bool BinarySearchTree::contains(int const &data) {
+bool BinarySearchTree::contains(int const &key) {
   bool restart = false;
   while (true) {
 
     Node *curr = root;
-    int field = nextField(curr, data);
+    int field = nextField(curr, key);
 
     // traverse
     Node *next = curr->get(field);
@@ -541,7 +544,7 @@ bool BinarySearchTree::contains(int const &data) {
 
       curr = next;
 
-      field = nextField(curr, data);
+      field = nextField(curr, key);
 
       // We have found node
       if (field == HERE) {
@@ -564,11 +567,11 @@ bool BinarySearchTree::contains(int const &data) {
     }
     // grab snapshot
     // check if restart is needed
-    bool goLeft = (data < curr->getData() ? true : false);
+    bool goLeft = (key < curr->getKey() ? true : false);
     Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
     if (curr->mark || 
-      (goLeft && (data <= snapShot->getData())) ||
-      (!goLeft && (data >= snapShot->getData()))) {
+      (goLeft && (key <= snapShot->getKey())) ||
+      (!goLeft && (key >= snapShot->getKey()))) {
       curr->lock.unlock();
       continue;
     }
@@ -822,12 +825,13 @@ void inOrderTraversal(BinarySearchTree &bst) {
     } else {
       curr = stack.top();
       stack.pop();
-      std::cout<<(curr->getData())<<" ";
+      std::cout<<(curr->getKey())<<" ";
       curr = curr->getRight();
     }
   }
   std::cout<<std::endl;
 }
+
 void preOrderTraversal(BinarySearchTree &bst) {
 
   std::stack<Node*> stack;
@@ -838,7 +842,7 @@ void preOrderTraversal(BinarySearchTree &bst) {
   while (!stack.empty()) {
 
     curr=stack.top();
-    std::cout<<(curr->getData())<<" ";
+    std::cout<<(curr->getKey())<<" ";
     stack.pop();
 
     if (curr->getRight()) {
@@ -849,22 +853,6 @@ void preOrderTraversal(BinarySearchTree &bst) {
     }
   }
   std::cout<<std::endl;
-}
-
-void printSnaps(BinarySearchTree bst) {
-  Node *start = bst.root;
-  std::queue<Node *> q;
-  q.push(start);
-
-  while(!q.empty()) {
-
-    Node *curr = q.front();
-    q.pop();
-    std::cout<<curr->getData()<<": ("<<curr->leftSnap.load()->getData()<<",";
-    std::cout<<curr->rightSnap.load() ->getData()<<")\n";
-    if (curr->getLeft()!=nullptr) q.push(curr->getLeft());
-    if (curr->getRight()!=nullptr) q.push(curr->getRight());
-  }
 }
 
 std::vector<int> init_list_ints(int num) {
@@ -888,29 +876,17 @@ std::vector<Node *> init_list(int num) {
   return vector;
 }
 
-bool check (BinarySearchTree bst) {
-  Node *curr = bst.minSentinel;
-  int currVal = curr->getData();
-  while (curr!=bst.maxSentinel) {
+bool check (BinarySearchTree &bst) {
+  Node *curr = bst.getMinSentinel();
+  int currVal = curr->getKey();
+  Node *last = bst.getMaxSentinel();
+  while (curr!=last) {
     curr = curr->rightSnap;
-    int nextVal = curr->getData();
+    int nextVal = curr->getKey();
     if (nextVal <= currVal) return false;
     currVal = nextVal;
   }
   return true;
-}
-
-void routine_1(BinarySearchTree &bst, int id, int n_threads, 
-              std::vector<int> keys) {
-
-  int count = 0;
-  for (int i=1*id; i<keys.size(); i+=n_threads) {
-    bst.insert(keys.at(i));
-  }
-  int increment = n_threads;
-  for (int i=1*id; i<keys.size(); i++) {
-    bst.remove(keys.at(i));
-  }
 }
 
 void routine_4(BinarySearchTree &bst, int id, int n_threads, std::vector<int> keys, std::vector<int> ops) {
@@ -960,7 +936,7 @@ public:
 };
 
 void printTreeDepth(BinarySearchTree bst) {
-  Node *start = bst.root;
+  Node *start = bst.getRoot();
   std::queue<NodeDepth *> q;
   q.push(new NodeDepth(start, 0));
 
@@ -978,7 +954,7 @@ void printTreeDepth(BinarySearchTree bst) {
       prevDepth = currDepth;
     }
     if (currNode!=nullptr) {
-      std::cout<<currNode->getData()<<" ";
+      std::cout<<currNode->getKey()<<" ";
     } else {
       std::cout<<"- ";
     }
@@ -1026,7 +1002,6 @@ int main(int argc, char **argv) {
 
   // Initialize device
   std::random_device rd;
-  // int [] numThreads= {1, 2, 4, 8, 16, 32};
   const std::vector<int> numThreads= {1, 2, 4, 8};
   for (int t = 0; t<numThreads.size(); t++ ) {
 
@@ -1044,12 +1019,12 @@ int main(int argc, char **argv) {
     std::vector<int> ops = init_ops(total, total*add/100, total*rem/100, total*cont/100);
 
     double avg = 0;
-    int runs = 10;
+    int runs = 1;
     for (int run=0; run<runs; run++) {
       BinarySearchTree *bst = init_BST(total*n_threads*add/100, avlProp, rd);
       std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
       for (int i=0; i<n_threads; i++) {
-        threads[i] = std::thread(routine_4, std::ref(*bst), i, n_threads, std::ref(keys), std::ref(ops));  
+      	threads[i] = std::thread(routine_4, std::ref(*bst), i, n_threads, std::ref(keys), std::ref(ops));  
       }
       for (int i=0; i<n_threads; i++) {
         threads[i].join();
