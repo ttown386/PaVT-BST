@@ -2,7 +2,7 @@
 // Created by ttown on 9/30/2018.
 //
 
-#include "BinarySearchTree.h"
+#include "PaVTBST.h"
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -27,7 +27,7 @@ const int LEFT = 0;
 const int RIGHT = 1;
 const int HERE = 2;
 
-BinarySearchTree::BinarySearchTree(bool isAvl) {
+PaVTBST::PaVTBST(bool isAvl) {
   // AVL condition
   this->isAvl = isAvl;
 
@@ -46,23 +46,23 @@ BinarySearchTree::BinarySearchTree(bool isAvl) {
   this->root = maxSentinel;
 }
 
-BinarySearchTree::~BinarySearchTree() {
+PaVTBST::~PaVTBST() {
   delete minSentinel;
 }
 
-Node *BinarySearchTree::getRoot() {
+Node *PaVTBST::getRoot() {
   return root;
 }
 
-Node *BinarySearchTree::getMinSentinel() {
+Node *PaVTBST::getMinSentinel() {
 	return minSentinel;
 }
 
-Node *BinarySearchTree::getMaxSentinel() {
+Node *PaVTBST::getMaxSentinel() {
 	return maxSentinel;
 }
 
-int BinarySearchTree::nextField(Node *node, int const &key) {
+int PaVTBST::nextField(Node *node, int const &key) {
 
   // c1(node, key) = L
   if (key<node->getKey()) return LEFT;
@@ -85,7 +85,7 @@ int BinarySearchTree::nextField(Node *node, int const &key) {
  * @param  key key value to search for
  * @return      The last node in the traversal which is now locked.
  */
-Node *BinarySearchTree::traverse(Node *node, int const &key) {
+Node *PaVTBST::traverse(Node *node, int const &key) {
 	bool restart = false;
 	while (true) {
 
@@ -138,13 +138,13 @@ Node *BinarySearchTree::traverse(Node *node, int const &key) {
 
 
 /**
- * BinarySearchTree::insert Insert new node into tree. If tree contains node
+ * PaVTBST::insert Insert new node into tree. If tree contains node
  * no node is inserted
  *
  * 
  * @param key key to be inserted into tree
  */
-void BinarySearchTree::insert(int const &key) {
+void PaVTBST::insert(int const &key) {
 
   // Continue to attempt insertion
   while (true) {
@@ -211,11 +211,11 @@ void BinarySearchTree::insert(int const &key) {
 }
 
 /**
- * BinarySearchTree::remove Removes node from tree. If node is not present then the
+ * PaVTBST::remove Removes node from tree. If node is not present then the
  * call returns. 
  * @param key The key to be removed from the tree
  */
-void BinarySearchTree::remove(int const &key) {
+void PaVTBST::remove(int const &key) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
@@ -527,11 +527,11 @@ void BinarySearchTree::remove(int const &key) {
 
 
 /**
- * BinarySearchTree::contains Returns true if tree contains node and false otherwise
+ * PaVTBST::contains Returns true if tree contains node and false otherwise
  * @param  key key to search for
  * @return      A boolean value
  */
-bool BinarySearchTree::contains(int const &key) {
+bool PaVTBST::contains(int const &key) {
   bool restart = false;
   while (true) {
 
@@ -581,7 +581,7 @@ bool BinarySearchTree::contains(int const &key) {
 }
 
 // Rotates node to the left. Child becomes nodes parent.
-void BinarySearchTree::rotateLeft(Node *child, Node *node, Node *parent) {
+void PaVTBST::rotateLeft(Node *child, Node *node, Node *parent) {
 
   // Grab the nodes right child
   Node *newRoot = child;
@@ -620,7 +620,7 @@ void BinarySearchTree::rotateLeft(Node *child, Node *node, Node *parent) {
 }
 
 //Rotates node to the right. Child becomes nodes parent
-void BinarySearchTree::rotateRight(Node *child, Node *node, Node *parent) {
+void PaVTBST::rotateRight(Node *child, Node *node, Node *parent) {
 
   // Grab the nodes left child
   Node* newRoot = child;
@@ -660,7 +660,7 @@ void BinarySearchTree::rotateRight(Node *child, Node *node, Node *parent) {
 /*
  * Returns the height of node
  */
-int BinarySearchTree::height(Node *node) {
+int PaVTBST::height(Node *node) {
   return (node == nullptr) ? -1 : node->getHeight();
 }
 
@@ -670,7 +670,7 @@ int BinarySearchTree::height(Node *node) {
  *
  * @param node
  */
-void BinarySearchTree::rebalance(Node *node) {
+void PaVTBST::rebalance(Node *node) {
 
   if (node==root) {
     return;
@@ -810,7 +810,7 @@ void BinarySearchTree::rebalance(Node *node) {
  * 
  */
 
-void inOrderTraversal(BinarySearchTree &bst) {
+void inOrderTraversal(PaVTBST &bst) {
 
   std::stack<Node*> stack;
 
@@ -832,7 +832,7 @@ void inOrderTraversal(BinarySearchTree &bst) {
   std::cout<<std::endl;
 }
 
-void preOrderTraversal(BinarySearchTree &bst) {
+void preOrderTraversal(PaVTBST &bst) {
 
   std::stack<Node*> stack;
 
@@ -876,7 +876,7 @@ std::vector<Node *> init_list(int num) {
   return vector;
 }
 
-bool check (BinarySearchTree &bst) {
+bool check (PaVTBST &bst) {
   Node *curr = bst.getMinSentinel();
   int currVal = curr->getKey();
   Node *last = bst.getMaxSentinel();
@@ -889,7 +889,7 @@ bool check (BinarySearchTree &bst) {
   return true;
 }
 
-void routine_4(BinarySearchTree &bst, int id, int n_threads, std::vector<int> keys, std::vector<int> ops) {
+void routine_4(PaVTBST &bst, int id, int n_threads, std::vector<int> keys, std::vector<int> ops) {
 
   int count = 0;
   int add = id;
@@ -935,7 +935,7 @@ public:
   }
 };
 
-void printTreeDepth(BinarySearchTree bst) {
+void printTreeDepth(PaVTBST bst) {
   Node *start = bst.getRoot();
   std::queue<NodeDepth *> q;
   q.push(new NodeDepth(start, 0));
@@ -965,9 +965,9 @@ void printTreeDepth(BinarySearchTree bst) {
   }
 }
 
-BinarySearchTree *init_BST(int numberOfNodes, bool AVL, std::random_device &rd) {
+PaVTBST *init_BST(int numberOfNodes, bool AVL, std::random_device &rd) {
 
-  BinarySearchTree *bst = new BinarySearchTree(AVL);
+  PaVTBST *bst = new PaVTBST(AVL);
 
   int min = -1*numberOfNodes;
   std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
@@ -1021,7 +1021,7 @@ int main(int argc, char **argv) {
     double avg = 0;
     int runs = 1;
     for (int run=0; run<runs; run++) {
-      BinarySearchTree *bst = init_BST(total*n_threads*add/100, avlProp, rd);
+      PaVTBST *bst = init_BST(total*n_threads*add/100, avlProp, rd);
       std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
       for (int i=0; i<n_threads; i++) {
       	threads[i] = std::thread(routine_4, std::ref(*bst), i, n_threads, std::ref(keys), std::ref(ops));  

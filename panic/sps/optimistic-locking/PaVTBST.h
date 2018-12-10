@@ -82,7 +82,7 @@ class Node {
   }
 };
 
-class BinarySearchTree {
+class PaVTBST {
  private:
   bool isAvl;
   Node *root;
@@ -96,8 +96,8 @@ class BinarySearchTree {
   Node *traverse(Node *node, int const &key);
   
  public:
-  BinarySearchTree(bool isAvl=false);
-  ~BinarySearchTree();
+  PaVTBST(bool isAvl=false);
+  ~PaVTBST();
   void insert(int const &key);
   void remove(int const &key);
   bool contains(int const &key);
