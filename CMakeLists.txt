@@ -44,6 +44,14 @@ list(REMOVE_ITEM TEST_FILES ${PROJECT_SOURCE_DIR}/tests/performance_tests.cpp)
 
 add_library(pavt_lib ${SRC_FILES})
 
+
+# ------------------------------------------------------------------------------
+#                         Code Coverage
+# ------------------------------------------------------------------------------
+# If CMake aborts due to missing dependencies for code coverage 
+# (gcov, lcov, genhtml and supported compiler), comment this line.
+include(CodeCoverage)
+
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 # Update submodules as needed
