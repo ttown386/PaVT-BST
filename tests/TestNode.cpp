@@ -3,10 +3,9 @@
 //
 
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include <iostream>
 
-#include "Node.h"
+#include "PaVT/PaVTBST.h"
 
 namespace {
 class TestNode : public testing::Test {
@@ -29,7 +28,7 @@ void TestNode::TearDown() {
 
 TEST_F(TestNode, setData) {
 
-  ASSERT_EQ(5, node->getData());
+  ASSERT_EQ(5, node->getKey());
 }
 
 TEST_F(TestNode, inserting) {
@@ -43,8 +42,8 @@ TEST_F(TestNode, inserting) {
   node->setLeft(test2);
   node->setRight(test1);
 
-  ASSERT_EQ(val2, node->getLeft()->getData());
-  ASSERT_EQ(val1, node->getRight()->getData());
+  ASSERT_EQ(val2, node->getLeft()->getKey());
+  ASSERT_EQ(val1, node->getRight()->getKey());
 
   // the tear down method will delete the other nodes
   // since the main node has a reference to them

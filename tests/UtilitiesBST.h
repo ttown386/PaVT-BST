@@ -5,7 +5,7 @@
 #include <stack>
 #include <queue>
 #include <iostream>
-#include "PaVTBST.h"
+#include "PaVT/PaVTBST.h"
 
 class NodeDepth {
  public:
@@ -16,6 +16,50 @@ class NodeDepth {
     depth = d;
   }
 };
+
+std::list<int> inOrderTraversal(PaVTBST &bst) {
+  std::stack<Node*> stack;
+
+  std::list<int> return_vals;
+  Node *curr = bst.getRoot();
+
+  while (!stack.empty() || curr!=nullptr) {
+
+    if (curr!=nullptr) {
+      stack.push(curr);
+      curr = curr->getLeft();
+    } else {
+      curr = stack.top();
+      stack.pop();
+      return_vals.push_back(curr->getKey());
+      curr = curr->getRight();
+    }
+  }
+  return return_vals;
+}
+
+std::list<int> preOrderTraversal(PaVTBST &bst) {
+
+  std::stack<Node*> stack;
+  std::list<int> return_vals;
+  Node *curr = bst.getRoot();
+  stack.push(curr);
+
+  while (!stack.empty()) {
+
+    curr=stack.top();
+    return_vals.push_back(curr->getKey());
+    stack.pop();
+
+    if (curr->getRight()) {
+      stack.push(curr->getRight());
+    }
+    if (curr->getLeft()) {
+      stack.push(curr->getLeft());
+    }
+  }
+  return return_vals;
+}
 
 void printInOrderTraversal(PaVTBST &bst) {
 

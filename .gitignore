@@ -95,3 +95,6 @@ src/serial/.idea/serial.iml
 # executables
 *.out
 *.exe*
+
+# build
+build/

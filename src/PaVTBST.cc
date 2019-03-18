@@ -2,8 +2,9 @@
 // Created by ttown on 9/30/2018.
 //
 
-#include "../include/PaVTBST.h"
+#include "PaVT/PaVTBST.h"
 #include <limits>
+#include <iostream>
 #include <algorithm>
 
 // Constants
@@ -17,18 +18,14 @@ const int RIGHT = 1;
 const int HERE = 2;
 
 PaVTBST::PaVTBST(bool isAvl) {
-  // AVL condition
   this->isAvl = isAvl;
 
-  // Bounds
   minSentinel = new Node(iMin);
   maxSentinel = new Node(iMax);
 
-  // tree structure
   maxSentinel->setParent(minSentinel);
   minSentinel->setRight(maxSentinel);
 
-  // Snapshots
   maxSentinel->leftSnap = minSentinel;
   minSentinel->rightSnap = maxSentinel;
 
@@ -78,17 +75,13 @@ Node *PaVTBST::traverse(Node *node, int const &key) {
 	bool restart = false;
 	while (true) {
 
-		Node *curr = root;
+		Node *curr = node;
 		int field = nextField(curr, key);
-
-		// traverse
     Node *next = curr->get(field);
 		while (next != nullptr) {
-
 			curr = next;
 
 			field = nextField(curr, key);
-
 			// We have found node
 			if (field == HERE) {
 				curr->lock.lock();

@@ -11,7 +11,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
-#include "PaVTBST.h"
+#include "PaVT/PaVTBST.h"
 
 std::vector<int> init_list_ints(int num) {
   std::vector<int> vector;
