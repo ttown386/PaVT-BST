@@ -2,9 +2,11 @@
 #define UTITLITIESBST_H
 
 #include <list>
+#include <vector>
 #include <stack>
 #include <queue>
 #include <iostream>
+
 #include "PaVT/PaVTBST.h"
 
 class NodeDepth {
@@ -17,10 +19,11 @@ class NodeDepth {
   }
 };
 
-std::list<int> inOrderTraversal(PaVTBST &bst) {
+inline 
+std::vector<int> inOrderTraversal(PaVTBST &bst) {
   std::stack<Node*> stack;
 
-  std::list<int> return_vals;
+  std::vector<int> return_vals;
   Node *curr = bst.getRoot();
 
   while (!stack.empty() || curr!=nullptr) {
@@ -38,10 +41,11 @@ std::list<int> inOrderTraversal(PaVTBST &bst) {
   return return_vals;
 }
 
-std::list<int> preOrderTraversal(PaVTBST &bst) {
+inline 
+std::vector<int> preOrderTraversal(PaVTBST &bst) {
 
   std::stack<Node*> stack;
-  std::list<int> return_vals;
+  std::vector<int> return_vals;
   Node *curr = bst.getRoot();
   stack.push(curr);
 
@@ -61,6 +65,7 @@ std::list<int> preOrderTraversal(PaVTBST &bst) {
   return return_vals;
 }
 
+inline
 void printInOrderTraversal(PaVTBST &bst) {
 
   std::stack<Node*> stack;
@@ -83,6 +88,7 @@ void printInOrderTraversal(PaVTBST &bst) {
   std::cout<<std::endl;
 }
 
+inline
 void printPreOrderTraversal(PaVTBST &bst) {
 
   std::stack<Node*> stack;
@@ -106,6 +112,7 @@ void printPreOrderTraversal(PaVTBST &bst) {
   std::cout<<std::endl;
 }
 
+inline
 bool check (PaVTBST &bst) {
   Node *curr = bst.getMinSentinel();
   int currVal = curr->getKey();
@@ -119,6 +126,7 @@ bool check (PaVTBST &bst) {
   return true;
 }
 
+inline
 void printTreeDepth(PaVTBST &bst) {
 
   Node *start = bst.getRoot();
