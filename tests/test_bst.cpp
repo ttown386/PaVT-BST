@@ -21,8 +21,8 @@ class TestPaVTBST : public testing::Test {
 
  public:
   void SetUp() {
-    balanced_preorder = {max_val, 4, 2, 1, 3, 6, 5, 7};
-    balanced_inorder = {1, 2, 3, 4, 5, 6, 7, max_val};
+    balanced_preorder = {max_val, 40, 20, 10, 30, 60, 50, 70};
+    balanced_inorder = {10, 20, 30, 40, 50, 60, 70, max_val};
     balanced_bst = init_balanced_bst();
   }
 
@@ -62,6 +62,7 @@ TEST_F(TestPaVTBST, Insert) {
   EXPECT_THAT(preorder_traversal, testing::ContainerEq(preorder_traversal_v));
 }
 
+
 TEST_F(TestPaVTBST, InsertAlreadyExists) {
   std::vector<int> first_preorder = inOrderTraversal(*balanced_bst);
   insert_vector_into_tree(balanced_bst, balanced_preorder);
@@ -69,12 +70,14 @@ TEST_F(TestPaVTBST, InsertAlreadyExists) {
   EXPECT_THAT(first_preorder, testing::ContainerEq(second_preorder));
 }
 
+
 TEST_F(TestPaVTBST, InsertDoesntAddSentinelNodes) {
   ;
 }
 
+
 TEST_F(TestPaVTBST, Contains) {
-  int val_1 = 7;
+  int val_1 = 70;
   int val_2 = 200;
   bool found_1 = balanced_bst->contains(val_1);
   bool found_2 = balanced_bst->contains(val_2);
@@ -82,12 +85,14 @@ TEST_F(TestPaVTBST, Contains) {
   ASSERT_TRUE(!found_2);
 }
 
+
 TEST_F(TestPaVTBST, ContainsDoesntFindSentielNodes) {
   ;
 }
 
+
 TEST_F(TestPaVTBST, DeleteLeaf) {
-  int node_val = 7;
+  int node_val = 70;
   balanced_bst->remove(node_val);
   balanced_preorder.pop_back();
   auto position = std::find(balanced_inorder.begin(), 
@@ -100,41 +105,103 @@ TEST_F(TestPaVTBST, DeleteLeaf) {
   EXPECT_THAT(balanced_inorder, testing::ContainerEq(inorder));
 }
 
+
 TEST_F(TestPaVTBST, DeleteNodeWithLeftChild) {
-;
+  int insert_val = 45;
+  int remove_val = 50;
+  balanced_bst->insert(insert_val);
+  balanced_bst->remove(remove_val);
+  std::vector<int> preorder = preOrderTraversal(*balanced_bst);
+  std::vector<int> inorder = inOrderTraversal(*balanced_bst);
+  auto index_pre = find(balanced_preorder.begin(), balanced_preorder.end(), remove_val);
+  auto index_in = find(balanced_inorder.begin(), balanced_inorder.end(), remove_val);
+  *index_pre = insert_val;
+  *index_in = insert_val;
+  EXPECT_THAT(balanced_preorder, testing::ContainerEq(preorder));
+  EXPECT_THAT(balanced_inorder, testing::ContainerEq(inorder));
 }
+
 
 TEST_F(TestPaVTBST, DeleteNodeWithRightChild) {
-;
+  int new_val = 80;
+  int old_val = 70;
+  std::vector<int> new_preorder {max_val, 40, 20, 10, 30, 60, 50, 80};
+  std::vector<int> new_inorder {10, 20, 30, 40, 50, 60, 80, max_val};
+  balanced_bst->insert(new_val);
+  balanced_bst->remove(old_val);
+  std::vector<int> preorder = preOrderTraversal(*balanced_bst);
+  std::vector<int> inorder = inOrderTraversal(*balanced_bst);
+  EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
+  EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));
 }
+
 
 TEST_F(TestPaVTBST, DeleteNodeWithTwoLeafs) {
-  ;
+  int old_val = 60;
+  std::vector<int> new_preorder {max_val, 40, 20, 10, 30, 70, 50};
+  std::vector<int> new_inorder {10, 20, 30, 40, 50, 70, max_val};
+  balanced_bst->remove(old_val);
+  std::vector<int> preorder = preOrderTraversal(*balanced_bst);
+  std::vector<int> inorder = inOrderTraversal(*balanced_bst);
+  EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
+  EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));;
 }
 
-TEST_F(TestPaVTBST, DeleteNodeRightChildHasNoLeftChild) {
-  ;
+
+TEST_F(TestPaVTBST, DeleteNodeRightChildLeftSubtreeContainsSuccessorLeaf) {
+  int new_val = 45;
+  int old_val = 40;
+  std::vector<int> new_preorder {max_val, 45, 20, 10, 30, 60, 50, 70};
+  std::vector<int> new_inorder {10, 20, 30, 45, 50, 60, 70, max_val};
+  balanced_bst->insert(new_val);
+  balanced_bst->remove(old_val);
+  std::vector<int> preorder = preOrderTraversal(*balanced_bst);
+  std::vector<int> inorder = inOrderTraversal(*balanced_bst);
+  EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
+  EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));
 }
 
-TEST_F(TestPaVTBST, DeleteNodeRightChildHasLeftChild) {
-  ;
+
+TEST_F(TestPaVTBST, DeleteNodeRightChildIsLeafSuccessorsParent) {
+  int new_val = 65;
+  int old_val = 60;
+  std::vector<int> new_preorder {max_val, 40, 20, 10, 30, 65, 50, 70};
+  std::vector<int> new_inorder {10, 20, 30, 40, 50, 65, 70, max_val};
+  balanced_bst->insert(new_val);
+  balanced_bst->remove(old_val);
+  std::vector<int> preorder = preOrderTraversal(*balanced_bst);
+  std::vector<int> inorder = inOrderTraversal(*balanced_bst);
+  EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
+  EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));
 }
 
-TEST_F(TestPaVTBST, DeleteNodeRightChildIsSuccessorsParent) {
-  ;
-}
-
-TEST_F(TestPaVTBST, DeleteNodeSuccessorHasNoRightChild) {
-  ;
-}
 
 TEST_F(TestPaVTBST, DeleteNodeSucessorHasRightChild) {
-  ;
+  int new_val_1 = 45;
+  int new_val_2 = 47;
+  int old_val = 40;
+  std::vector<int> new_preorder {max_val, 45, 20, 10, 30, 60, 50, 47, 70};
+  std::vector<int> new_inorder {10, 20, 30, 45, 47, 50, 60, 70, max_val};
+  balanced_bst->insert(new_val_1);
+  balanced_bst->insert(new_val_2);
+  balanced_bst->remove(old_val);
+  std::vector<int> preorder = preOrderTraversal(*balanced_bst);
+  std::vector<int> inorder = inOrderTraversal(*balanced_bst);
+  EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
+  EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));
+
 }
 
+
 TEST_F(TestPaVTBST, NoneDeleted) {
-  ;
+  int old_val = -100;
+  balanced_bst->remove(old_val);
+  std::vector<int> preorder = preOrderTraversal(*balanced_bst);
+  std::vector<int> inorder = inOrderTraversal(*balanced_bst);
+  EXPECT_THAT(preorder, testing::ContainerEq(balanced_preorder));
+  EXPECT_THAT(inorder, testing::ContainerEq(balanced_inorder));
 }
+
 
 TEST_F(TestPaVTBST, DeleteDoesntRemoveSentielNodes) {
   ;
