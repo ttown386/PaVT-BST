@@ -49,6 +49,7 @@ class TestPaVTAVL : public testing::Test {
   }
 };
 
+
 TEST_F(TestPaVTAVL, InsertSingleRightRotation) {
   int new_val = 14;
   const std::vector<int> new_preorder = {max_val, 10, 4, new_val};
@@ -59,6 +60,7 @@ TEST_F(TestPaVTAVL, InsertSingleRightRotation) {
   EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));
   EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
 }
+
 
 TEST_F(TestPaVTAVL, InsertSingleLeftRotation) {
   int new_val = 14;
@@ -71,70 +73,43 @@ TEST_F(TestPaVTAVL, InsertSingleLeftRotation) {
   EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
 }
 
-// TEST_F(TestPaVTBST, AVLInsertLeftRightRot) {
 
-//   // initialize avl
-//   int avlData[] {12, 2, 18, 1, 10, 21, 11, 7, 9};
-//   int n = sizeof(avlData) / sizeof(avlData[0]);
-//   std::vector<int> dest(avlData, avlData+n);
-//   for (int i=0; i<dest.size(); i++) {
-//     avl->insert(dest.at(i));
-//   }
+TEST_F(TestPaVTAVL, AVLInsertLeftRightRot) {
 
-//   // sort the vector
-//   std::sort(dest.begin(), dest.end());
+  std::vector<int> avl_data{2, 1, 10, 11, 7, 9};
+  std::vector<int> avl_preorder{max_val, 7, 2, 1, 10, 9, 11,};
+  std::vector<int> avl_inorder(avl_preorder.begin(), avl_preorder.end());
+  std::sort(avl_inorder.begin(), avl_inorder.end());
 
-//   // in order traversal
-//   bool areEqual = true;
+  PaVTBST* avl_tree = new PaVTBST(true);
+  for (int i=0; i<avl_data.size(); i++) {
+    avl_tree->insert(avl_data[i]);
+  }
+  std::vector<int> inorder = inOrderTraversal(*avl_tree);
+  std::vector<int> preorder = preOrderTraversal(*avl_tree);
+  delete avl_tree;
 
-//   std::list<int> inOrder = inOrderTraversal(*avl);
-//   std::list<int>::iterator it = inOrder.begin();
-//   for (int i=0; i<inOrder.size(); i++) {
-//     int temp = *it++;
-// //    std::cout<<temp<<" \n";
-//     areEqual &= (temp == dest.at(i));
-//   }
+  EXPECT_THAT(inorder, testing::ContainerEq(avl_inorder));
+  EXPECT_THAT(preorder, testing::ContainerEq(avl_preorder));
+}
 
-//   int avlDataPre[] {10, 2, 1, 7, 9, 12, 11, 18, 21};
-//   std::list<int> preOrder = preOrderTraversal(*avl);
-//   it = preOrder.begin();
-//   for (int i=0; i<preOrder.size(); i++) {
-//     int temp = *(it++);
-//     areEqual &= (temp == avlDataPre[i]);
-//   }
-//   ASSERT_EQ(areEqual, true);
-// }
 
-// TEST_F(TestPaVTBST, AVLInsertRightLeftRot) {
+TEST_F(TestPaVTAVL, AVLInsertRightLeftRot) {
 
-//   // initialize avl
-//   int avlData[] {9, 12, 4, 17, 10, 11};
-//   int n = sizeof(avlData) / sizeof(avlData[0]);
-//   std::vector<int> dest(avlData, avlData+n);
-//   for (int i=0; i<dest.size(); i++) {
-//     avl->insert(dest.at(i));
-//   }
+  std::vector<int> avl_data{9, 12, 4, 17, 10, 11};
+  std::vector<int> avl_preorder{max_val, 10, 9, 4, 12, 11, 17};
+  std::vector<int> avl_inorder(avl_preorder.begin(), avl_preorder.end());
+  std::sort(avl_inorder.begin(), avl_inorder.end());
 
-//   // sort the vector
-//   std::sort(dest.begin(), dest.end());
+  PaVTBST* avl_tree = new PaVTBST(true);
+  for (int i=0; i<avl_data.size(); i++) {
+    avl_tree->insert(avl_data[i]);
+  }
+  std::vector<int> inorder = inOrderTraversal(*avl_tree);
+  std::vector<int> preorder = preOrderTraversal(*avl_tree);
+  delete avl_tree;
 
-//   bool areEqual = true;
-//   // Try in order traversal
-//   std::list<int> inOrder = inOrderTraversal(*avl);
-//   std::list<int>::iterator it = inOrder.begin();
-//   for (int i=0; i<inOrder.size(); i++) {
-//     int temp = *it++;
-// //    std::cout<<temp<<" \n";
-//     areEqual &= (temp == dest.at(i));
-//   }
-//   // Now try preOrder traversal
-//   int avlDataPre[] {10, 9, 4, 12, 11, 17};
-//   std::list<int> preOrder = preOrderTraversal(*avl);
-//   it = preOrder.begin();
-//   for (int i=0; i<preOrder.size(); i++) {
-//     int temp = *(it++);
-//     areEqual &= (temp == avlDataPre[i]);
-//   }
-//   ASSERT_EQ(areEqual, true);
-// }
+  EXPECT_THAT(inorder, testing::ContainerEq(avl_inorder));
+  EXPECT_THAT(preorder, testing::ContainerEq(avl_preorder));
+}
 }

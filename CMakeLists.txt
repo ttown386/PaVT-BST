@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.1.3)
 # Version numbers are available by including "BingoCpp/version.h" in 
 # the source. See version.h.in for some more details.
 project(PaVT VERSION 0.1.1.0 LANGUAGES C CXX)
-
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++11 -pthread")
 
 # ---------- version ----------
 configure_file (
@@ -44,6 +44,13 @@ list(REMOVE_ITEM TEST_FILES ${PROJECT_SOURCE_DIR}/tests/performance_tests.cpp)
 
 add_library(pavt_lib ${SRC_FILES})
 
+# ------------------------------------------------------------------------------
+#                        Performance Benchmarks 
+# ------------------------------------------------------------------------------
+find_package(Threads)
+add_executable(performance_benchmarks ${PROJECT_SOURCE_DIR}/tests/performance_tests.cpp)
+target_link_libraries(performance_benchmarks pavt_lib)
+target_link_libraries(performance_benchmarks ${CMAKE_THREAD_LIB_INIT})
 
 # ------------------------------------------------------------------------------
 #                         Code Coverage
