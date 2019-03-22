@@ -30,7 +30,7 @@ class TestPaVTAVL : public testing::Test {
   
   void insert_vector_into_tree(PaVTBST* tree, 
                                const std::vector<int>& node_list) {
-    for (int i=0; i < node_list.size(); i++) {
+    for (std::size_t i=0; i < node_list.size(); i++) {
       tree->insert(node_list[i]);
     }
   }
@@ -81,7 +81,7 @@ TEST_F(TestPaVTAVL, AVLInsertLeftRightRot) {
   std::sort(avl_inorder.begin(), avl_inorder.end());
 
   PaVTBST* avl_tree = new PaVTBST(true);
-  for (int i=0; i<avl_data.size(); i++) {
+  for (std::size_t i=0; i<avl_data.size(); i++) {
     avl_tree->insert(avl_data[i]);
   }
   std::vector<int> inorder = inOrderTraversal(*avl_tree);

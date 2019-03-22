@@ -4,7 +4,6 @@
 #include <stack>
 
 #include "PaVT/Base/node.h"
-#include "PaVT/PaVTBST.h"
 
 namespace pavt {
 
@@ -16,7 +15,7 @@ class LockManager {
   base::Node* unlock();
   void unlockAll();
  protected:
-  std::stack<base::Node* > lock_stack;
+  std::stack<base::Node*> lock_stack;
 };
 } // pavt
 #endif // PAVT_LOCK_MANGER_H_

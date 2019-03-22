@@ -9,7 +9,9 @@
 #include <mutex>
 #include <atomic>
 
-class Node {
+#include <PaVT/lock_manager.h>
+
+class Node : pavt::base::Node {
  private:
   int key;
   Node *left;
@@ -83,7 +85,7 @@ class Node {
 };
 
 class PaVTBST {
- private:
+ protected:
   bool isAvl;
   Node *root;
   Node *maxSentinel;
@@ -104,7 +106,7 @@ class PaVTBST {
   Node *getRoot();
   Node *getMinSentinel();
   Node *getMaxSentinel();
-
+  static thread_local pavt::LockManager* lock_manager;
 };
 
 #endif //BINARYSEARCHTREE_H

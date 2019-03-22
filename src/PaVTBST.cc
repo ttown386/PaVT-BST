@@ -2,20 +2,29 @@
 // Created by ttown on 9/30/2018.
 //
 
-#include "PaVT/PaVTBST.h"
 #include <limits>
 #include <iostream>
 #include <algorithm>
+#include <thread>
+
+#include <PaVT/Base/node.h>
+#include <PaVT/PaVTBST.h>
 
 // Constants
 const int MAXBF = 1; // Max Balance Factor
 const int MINBF = -1; // Min Balance Factor
 const int iMin = std::numeric_limits<int>::min(); // Min Integer
 const int iMax = std::numeric_limits<int>::max(); // Max Integer
-// For traversals
 const int LEFT = 0;
 const int RIGHT = 1;
 const int HERE = 2;
+
+thread_local pavt::LockManager* PaVTBST::lock_manager = new pavt::LockManager();
+
+void lock(pavt::base::Node* node);
+void unlock();
+void unlockAll();
+
 
 PaVTBST::PaVTBST(bool isAvl) {
   this->isAvl = isAvl;
@@ -784,4 +793,16 @@ void PaVTBST::rebalance(Node *node) {
       parent = node->getParent();
     }
   }
+}
+
+void lock(pavt::base::Node* node) {
+  PaVTBST::lock_manager->lock(node);
+}
+
+void unlock() {
+  PaVTBST::lock_manager->unlock();
+}
+
+void unlockAll() {
+  PaVTBST::lock_manager->unlockAll();
 }
