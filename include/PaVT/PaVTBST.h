@@ -105,7 +105,7 @@ class PaVTBST {
   Node* traverse(Node *node, const int &key);
 
   Node* insert(Node* node);
-  std::pair<Node*, Node*> remove(Node* node);
+  std::pair<Node*, Node*>* remove(Node* node, const int& key);
 
   void rotateLeft(Node *child, Node *node, Node *parent);
   void rotateRight(Node *child, Node *node, Node *parent);
