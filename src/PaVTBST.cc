@@ -132,58 +132,63 @@ Node *PaVTBST::traverse(Node *node, int const &key) {
  * 
  * @param key key to be inserted into tree
  */
-void PaVTBST::insert(int const &key) {
+void PaVTBST::insert(const int& key) {
+  Node* new_node = new Node(key);
+  Node* return_node = insert(new_node);
+  if (return_node == nullptr) delete new_node;
+}
+
+Node* PaVTBST::insert(Node* node) {
 
   // Continue to attempt insertion
   while (true) {
 
     // traverse and lock node
-    Node *curr = traverse(root, key);
+    Node *curr = traverse(root, node->getKey());
   
     // We have a duplicate
-    if (curr->getKey()== key) {
+    if (curr->getKey()== node->getKey()) {
       unlockAll();
-      return;
+      return nullptr;
     }
     
     
     // No longer a leaf node
     if (
-      (key > curr->getKey() && curr->getRight()!=nullptr) ||
-      (key < curr->getKey() && curr->getLeft()!=nullptr)) {
+        (node->getKey() > curr->getKey() && curr->getRight()!=nullptr) ||
+        (node->getKey() < curr->getKey() && curr->getLeft()!=nullptr)) {
       unlockAll();
       continue;
     }
     
     // Insert node and update parent
-    Node *newNode = new Node(key);
-    newNode->setParent(curr);
+    node->setParent(curr);
 
     // Copy snaps from parent
-    bool parentIsLarger = key < curr->getKey();
+    bool parentIsLarger = node->getKey() < curr->getKey();
     Node *snapshot = (parentIsLarger ? curr->leftSnap.load() : curr->rightSnap.load());
 
 
     // If parent is larger, set left pointer to new node
     // and update snaps
     if (parentIsLarger) {
-      newNode->leftSnap = snapshot;
-      newNode->rightSnap = curr;
+      node->leftSnap = snapshot;
+      node->rightSnap = curr;
 
-      snapshot->rightSnap = newNode;
-      curr->leftSnap = newNode;
+      snapshot->rightSnap = node;
+      curr->leftSnap = node;
 
-      curr->setLeft(newNode);
+      curr->setLeft(node);
 
     // Otherwise set right pointer and update snaps
     } else {
-      newNode->leftSnap = curr;
-      newNode->rightSnap = snapshot;
+      node->leftSnap = curr;
+      node->rightSnap = snapshot;
 
-      snapshot->leftSnap = newNode;
-      curr->rightSnap = newNode;
+      snapshot->leftSnap = node;
+      curr->rightSnap = node;
 
-      curr->setRight(newNode);
+      curr->setRight(node);
     }
 
     // Unlock
@@ -193,7 +198,7 @@ void PaVTBST::insert(int const &key) {
     if (isAvl) {
       rebalance(curr);
     }
-    return;
+    return curr;
   }
 }
 

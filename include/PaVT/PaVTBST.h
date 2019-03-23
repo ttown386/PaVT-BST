@@ -87,9 +87,9 @@ class PaVTBST {
  public:
   PaVTBST(bool isAvl=false);
   ~PaVTBST();
-  void insert(int const &key);
-  void remove(int const &key);
-  bool contains(int const &key);
+  void insert(const int &key);
+  void remove(const int &key);
+  bool contains(const int &key);
   Node *getRoot();
   Node *getMinSentinel();
   Node *getMaxSentinel();
@@ -100,12 +100,18 @@ class PaVTBST {
   Node *root;
   Node *maxSentinel;
   Node *minSentinel;
-  int nextField(Node *node, int const &key);
+  
+  int nextField(Node *node, const int &key);
+  Node* traverse(Node *node, const int &key);
+
+  Node* insert(Node* node);
+  std::pair<Node*, Node*> remove(Node* node);
+
   void rotateLeft(Node *child, Node *node, Node *parent);
   void rotateRight(Node *child, Node *node, Node *parent);
   int height(Node *node);
   void rebalance(Node *node);
-  Node *traverse(Node *node, int const &key);
+  
   void lock(Node* node);
   bool tryLock(Node* node);
   void unlock();
