@@ -11,7 +11,7 @@
 
 #include <PaVT/lock_manager.h>
 
-class Node : pavt::base::Node {
+class Node : public pavt::base::Node {
  private:
   int key;
   Node *left;
@@ -19,8 +19,6 @@ class Node : pavt::base::Node {
   Node *parent;
   int height;
  public:
-  std::mutex lock;
-  bool mark;
   std::atomic<Node *> leftSnap;
   std::atomic<Node *> rightSnap;
   Node(int const& key) {

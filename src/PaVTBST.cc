@@ -21,7 +21,8 @@ const int HERE = 2;
 
 thread_local pavt::LockManager* PaVTBST::lock_manager = new pavt::LockManager();
 
-void lock(pavt::base::Node* node);
+void lock(Node* node);
+bool tryLock(Node* node);
 void unlock();
 void unlockAll();
 
@@ -93,10 +94,10 @@ Node *PaVTBST::traverse(Node *node, int const &key) {
 			field = nextField(curr, key);
 			// We have found node
 			if (field == HERE) {
-				curr->lock.lock();
+        lock(curr);
 				// If marked then break from first while loop and restart
 				if (curr->mark) {
-					curr->lock.unlock();
+          unlock();
 					restart = true;
 					break;
 				}
@@ -111,7 +112,7 @@ Node *PaVTBST::traverse(Node *node, int const &key) {
 			restart = false;
 			continue;
 		}
-		curr->lock.lock();
+    lock(curr);
 		// grab snapshot
 		// check if restart is needed
 		bool goLeft = (key < curr->getKey() ? true : false);
@@ -119,7 +120,7 @@ Node *PaVTBST::traverse(Node *node, int const &key) {
 		if (curr->mark || 
       		(goLeft && (key <= snapShot->getKey())) ||
 			(!goLeft && (key >= snapShot->getKey()))) {
-			curr->lock.unlock();
+      unlock();
 			continue;
 		}
 
@@ -145,7 +146,7 @@ void PaVTBST::insert(int const &key) {
   
     // We have a duplicate
     if (curr->getKey()== key) {
-      curr->lock.unlock();
+      unlockAll();
       return;
     }
     
@@ -154,8 +155,7 @@ void PaVTBST::insert(int const &key) {
     if (
       (key > curr->getKey() && curr->getRight()!=nullptr) ||
       (key < curr->getKey() && curr->getLeft()!=nullptr)) {
-
-      curr->lock.unlock();
+      unlockAll();
       continue;
     }
     
@@ -191,7 +191,7 @@ void PaVTBST::insert(int const &key) {
     }
 
     // Unlock
-    curr->lock.unlock();
+    unlockAll();
 
     // Perform AVL rotations if applicable
     if (isAvl) {
@@ -220,22 +220,21 @@ void PaVTBST::remove(int const &key) {
     // Already checked snapshots so return if current
     // node is not one to be deleted
     if (curr->getKey()!= key) {
-      curr->lock.unlock();
+      unlockAll();
       return;
     }
     
     // Lock Parent
     Node *parent = curr->getParent();
-    if (!parent->lock.try_lock()) {
-      curr->lock.unlock();
+    if (!tryLock(parent)) {
+      unlockAll();
       continue;
     }
 
 		// Some other thread has gone and changed things around
 		// Got to check if we already got removed otherwise unlock restart
 		if (parent != curr->getParent()) {
-      curr->lock.unlock();
-			parent->lock.unlock();
+      unlockAll();
 			if (curr->mark) {
 				return;
 			}
@@ -269,16 +268,14 @@ void PaVTBST::remove(int const &key) {
       }
 
       // Unlock all
-      curr->lock.unlock();
-      parent->lock.unlock();
-
+      unlockAll();
       if (isAvl) rebalance(parent);
       return;
     }
 
     // Lock children
-    if (leftChild !=nullptr)leftChild->lock.lock();
-    if (rightChild !=nullptr) rightChild->lock.lock();
+    if (leftChild !=nullptr) lock(leftChild);
+    if (rightChild !=nullptr) lock(rightChild);
 
     /* A node with at most 1 child */
     if (leftChild==nullptr || rightChild==nullptr) {
@@ -297,7 +294,7 @@ void PaVTBST::remove(int const &key) {
       // that node as its path can be altered
       bool lockedSnap = false;
       if (snapshot!=currChild) {
-        snapshot->lock.lock();
+        lock(snapshot);
         lockedSnap = true;
       }
 
@@ -305,11 +302,7 @@ void PaVTBST::remove(int const &key) {
       if ((hasRightChild && snapshot->leftSnap.load()!=curr) || 
           (!hasRightChild && snapshot->rightSnap.load()!=curr) ||
 					snapshot->mark) {
-
-        if (lockedSnap) snapshot->lock.unlock(); 
-        currChild->lock.unlock();
-        curr->lock.unlock();
-        parent->lock.unlock();
+        unlockAll();
         continue;
       }
 
@@ -328,11 +321,7 @@ void PaVTBST::remove(int const &key) {
       minSnapNode->rightSnap = maxSnapNode;
       maxSnapNode->leftSnap = minSnapNode;
 
-      // Unlock all
-      if (lockedSnap) snapshot->lock.unlock(); 
-      currChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
+      unlockAll();
 
       if (isAvl) rebalance(parent);
       return;
@@ -346,18 +335,14 @@ void PaVTBST::remove(int const &key) {
     // Lock if leftSnap is not the leftChild
     bool lockedPred = false;
     if (minSnapNode != leftChild) {
-      minSnapNode->lock.lock();
+      lock(minSnapNode);
       lockedPred = true;
     } 
 
     // Check if the LeftSnapshot's right snapshot is the node
     // to be removed
     if (minSnapNode->rightSnap!=curr || minSnapNode->mark) {
-      if (lockedPred) minSnapNode->lock.unlock();
-      rightChild->lock.unlock();
-      leftChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
+      unlockAll();
       continue;
     }
 
@@ -383,11 +368,7 @@ void PaVTBST::remove(int const &key) {
       maxSnapNode->leftSnap = minSnapNode;
 
       // Unlock all
-      if (lockedPred) minSnapNode->lock.unlock();
-      rightChild->lock.unlock();
-      leftChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
+      unlockAll();
       
       if (isAvl) rebalance(rightChild);
 
@@ -402,15 +383,10 @@ void PaVTBST::remove(int const &key) {
     // Successor's parent is no the right child
     bool lockedSuccParent = false;
     if (succParent!=rightChild) {
-      succParent->lock.lock();
+      lock(succParent);
 
       if (maxSnapNode->getParent() != succParent || maxSnapNode->mark) {
-        succParent->lock.unlock();
-        if (lockedPred) minSnapNode->lock.unlock();
-        rightChild->lock.unlock();
-        leftChild->lock.unlock();
-        curr->lock.unlock();
-        parent->lock.unlock();
+        unlockAll();
         continue;
       }
 
@@ -418,15 +394,9 @@ void PaVTBST::remove(int const &key) {
     }
 
     // Lock successor
-    succ->lock.lock();
+    lock(succ);
     if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->mark) {
-      succ->lock.unlock();
-      if (lockedSuccParent) succParent->lock.unlock();
-      if (lockedPred) minSnapNode->lock.unlock();
-      rightChild->lock.unlock();
-      leftChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
+      unlockAll();
       continue;
     }
 
@@ -439,29 +409,18 @@ void PaVTBST::remove(int const &key) {
     Node *succRightSnapshot = succ->rightSnap.load();
 
     if (succRightChild!=nullptr)  {
-
-      succRightChild->lock.lock();
+      lock(succRightChild);
       lockedSuccRightChild = true;
 
       succRightSnapshot = succ->rightSnap.load();
       if (succRightSnapshot!=succRightChild) {
-        succRightSnapshot->lock.lock();
+        lock(succRightSnapshot);
         lockedSuccRightSnap = true;
       }
 
       // Check if it's left snap is still the successor
       if (succRightSnapshot->leftSnap.load()!=succ||succRightSnapshot->mark) {
-
-        // Unlock all
-        if (lockedSuccRightSnap) succRightSnapshot->lock.unlock();
-        if (lockedSuccRightChild) succRightChild->lock.unlock();
-        succ->lock.unlock();
-        if (lockedSuccParent) succParent->lock.unlock();
-        if (lockedPred) minSnapNode->lock.unlock();
-        rightChild->lock.unlock();
-        leftChild->lock.unlock();
-        curr->lock.unlock();
-        parent->lock.unlock();
+        unlockAll();
         continue;
       }
     }
@@ -497,15 +456,7 @@ void PaVTBST::remove(int const &key) {
     minSnapNode->rightSnap = succ;
 
     // Unlock All
-    if (lockedSuccRightSnap) succRightSnapshot->lock.unlock();
-    if (lockedSuccRightChild) succRightChild->lock.unlock();
-    succ->lock.unlock();
-    if (lockedSuccParent) succParent->lock.unlock();
-    if (lockedPred) minSnapNode->lock.unlock();
-    rightChild->lock.unlock();
-    leftChild->lock.unlock();
-    curr->lock.unlock();
-    parent->lock.unlock();
+    unlockAll();
 
     if (isAvl) {
       rebalance(succ);
@@ -563,7 +514,6 @@ bool PaVTBST::contains(int const &key) {
     if (curr->mark || 
       (goLeft && (key <= snapShot->getKey())) ||
       (!goLeft && (key >= snapShot->getKey()))) {
-      curr->lock.unlock();
       continue;
     }
 
@@ -795,8 +745,12 @@ void PaVTBST::rebalance(Node *node) {
   }
 }
 
-void lock(pavt::base::Node* node) {
+void lock(Node* node) {
   PaVTBST::lock_manager->lock(node);
+}
+
+bool tryLock(Node* node) {
+  return PaVTBST::lock_manager->tryLock(node);
 }
 
 void unlock() {

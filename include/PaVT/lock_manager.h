@@ -12,6 +12,7 @@ class LockManager {
   LockManager();
   ~LockManager();
   void lock(base::Node* node);
+  bool tryLock(base::Node* node);
   base::Node* unlock();
   void unlockAll();
  protected:
