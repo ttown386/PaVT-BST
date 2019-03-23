@@ -11,6 +11,7 @@
 
 #include "PaVT/PaVTBST.h"
 
+using namespace pavt;
 struct BenchmarkData {
   int total_operations;
   int insert_count;

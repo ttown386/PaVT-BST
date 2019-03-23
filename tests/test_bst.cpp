@@ -10,6 +10,7 @@
 #include "UtilitiesBST.h"
 #include "PaVT/PaVTBST.h"
 
+using namespace pavt;
 namespace {
 
 class TestPaVTBST : public testing::Test {

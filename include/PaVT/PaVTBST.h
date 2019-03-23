@@ -3,15 +3,16 @@
 // Created by ttown on 9/30/2018.
 //
 
-#ifndef BINARYSEARCHTREE_H
-#define BINARYSEARCHTREE_H
+#ifndef PAVT_BINARY_SEARCH_TREE_H_
+#define PAVT_BINARY_SEARCH_TREE_H_ 
 
 #include <mutex>
 #include <atomic>
 
 #include <PaVT/lock_manager.h>
 
-class Node : public pavt::base::Node {
+namespace pavt {
+class Node : public base::Node {
  private:
   int key;
   Node *left;
@@ -83,6 +84,17 @@ class Node : public pavt::base::Node {
 };
 
 class PaVTBST {
+ public:
+  PaVTBST(bool isAvl=false);
+  ~PaVTBST();
+  void insert(int const &key);
+  void remove(int const &key);
+  bool contains(int const &key);
+  Node *getRoot();
+  Node *getMinSentinel();
+  Node *getMaxSentinel();
+  static thread_local pavt::LockManager* lock_manager;
+
  protected:
   bool isAvl;
   Node *root;
@@ -94,17 +106,10 @@ class PaVTBST {
   int height(Node *node);
   void rebalance(Node *node);
   Node *traverse(Node *node, int const &key);
-  
- public:
-  PaVTBST(bool isAvl=false);
-  ~PaVTBST();
-  void insert(int const &key);
-  void remove(int const &key);
-  bool contains(int const &key);
-  Node *getRoot();
-  Node *getMinSentinel();
-  Node *getMaxSentinel();
-  static thread_local pavt::LockManager* lock_manager;
+  void lock(Node* node);
+  bool tryLock(Node* node);
+  void unlock();
+  void unlockAll();
 };
-
-#endif //BINARYSEARCHTREE_H
+}
+#endif // PAVT_BINARY_SEARCH_TREE_H_

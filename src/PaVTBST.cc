@@ -10,6 +10,7 @@
 #include <PaVT/Base/node.h>
 #include <PaVT/PaVTBST.h>
 
+namespace pavt {
 // Constants
 const int MAXBF = 1; // Max Balance Factor
 const int MINBF = -1; // Min Balance Factor
@@ -20,11 +21,6 @@ const int RIGHT = 1;
 const int HERE = 2;
 
 thread_local pavt::LockManager* PaVTBST::lock_manager = new pavt::LockManager();
-
-void lock(Node* node);
-bool tryLock(Node* node);
-void unlock();
-void unlockAll();
 
 
 PaVTBST::PaVTBST(bool isAvl) {
@@ -745,18 +741,19 @@ void PaVTBST::rebalance(Node *node) {
   }
 }
 
-void lock(Node* node) {
+void PaVTBST::lock(Node* node) {
   PaVTBST::lock_manager->lock(node);
 }
 
-bool tryLock(Node* node) {
+bool PaVTBST::tryLock(Node* node) {
   return PaVTBST::lock_manager->tryLock(node);
 }
 
-void unlock() {
+void PaVTBST::unlock() {
   PaVTBST::lock_manager->unlock();
 }
 
-void unlockAll() {
+void PaVTBST::unlockAll() {
   PaVTBST::lock_manager->unlockAll();
 }
+} // namespace pavt
