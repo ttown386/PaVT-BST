@@ -3,13 +3,16 @@
 // Created by ttown on 9/30/2018.
 //
 
-#ifndef BINARYSEARCHTREE_H
-#define BINARYSEARCHTREE_H
+#ifndef PAVT_BINARY_SEARCH_TREE_H_
+#define PAVT_BINARY_SEARCH_TREE_H_ 
 
 #include <mutex>
 #include <atomic>
 
-class Node {
+#include <PaVT/lock_manager.h>
+
+namespace pavt {
+class Node : public base::Node {
  private:
   int key;
   Node *left;
@@ -17,8 +20,6 @@ class Node {
   Node *parent;
   int height;
  public:
-  std::mutex lock;
-  bool mark;
   std::atomic<Node *> leftSnap;
   std::atomic<Node *> rightSnap;
   Node(int const& key) {
@@ -83,28 +84,38 @@ class Node {
 };
 
 class PaVTBST {
- private:
+ public:
+  PaVTBST(bool isAvl=false);
+  ~PaVTBST();
+  void insert(const int &key);
+  void remove(const int &key);
+  bool contains(const int &key);
+  Node *getRoot();
+  Node *getMinSentinel();
+  Node *getMaxSentinel();
+  static thread_local pavt::LockManager* lock_manager;
+
+ protected:
   bool isAvl;
   Node *root;
   Node *maxSentinel;
   Node *minSentinel;
-  int nextField(Node *node, int const &key);
+  
+  int nextField(Node *node, const int &key);
+  Node* traverse(Node *node, const int &key);
+
+  Node* insert(Node* node);
+  std::pair<Node*, Node*>* remove(Node* node, const int& key);
+
   void rotateLeft(Node *child, Node *node, Node *parent);
   void rotateRight(Node *child, Node *node, Node *parent);
   int height(Node *node);
   void rebalance(Node *node);
-  Node *traverse(Node *node, int const &key);
   
- public:
-  PaVTBST(bool isAvl=false);
-  ~PaVTBST();
-  void insert(int const &key);
-  void remove(int const &key);
-  bool contains(int const &key);
-  Node *getRoot();
-  Node *getMinSentinel();
-  Node *getMaxSentinel();
-
+  void lock(Node* node);
+  bool tryLock(Node* node);
+  void unlock();
+  void unlockAll();
 };
-
-#endif //BINARYSEARCHTREE_H
+}
+#endif // PAVT_BINARY_SEARCH_TREE_H_

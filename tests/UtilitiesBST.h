@@ -9,6 +9,7 @@
 
 #include "PaVT/PaVTBST.h"
 
+using namespace pavt;
 class NodeDepth {
  public:
   Node * node;

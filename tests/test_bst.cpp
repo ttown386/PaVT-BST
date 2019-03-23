@@ -10,6 +10,7 @@
 #include "UtilitiesBST.h"
 #include "PaVT/PaVTBST.h"
 
+using namespace pavt;
 namespace {
 
 class TestPaVTBST : public testing::Test {
@@ -32,7 +33,7 @@ class TestPaVTBST : public testing::Test {
 
   void insert_vector_into_tree(PaVTBST* tree, 
                                const std::vector<int>& node_list) {
-    for (int i=0; i < node_list.size(); i++) {
+    for (std::size_t i=0; i < node_list.size(); i++) {
       tree->insert(node_list[i]);
     }
   }
@@ -40,7 +41,7 @@ class TestPaVTBST : public testing::Test {
  private:
   PaVTBST* init_balanced_bst() {
     PaVTBST* bst = new PaVTBST();
-    for (int i = 0; i < balanced_preorder.size(); i++) {
+    for (std::size_t i = 0; i < balanced_preorder.size(); i++) {
       bst->insert(balanced_preorder[i]);
     }
     return bst;
@@ -52,7 +53,7 @@ TEST_F(TestPaVTBST, Insert) {
   PaVTBST* bst = new PaVTBST();
   std::vector<int> inorder_traversal = {-5, 6, 7, 10, max_val};
   std::vector<int> preorder_traversal = {max_val, 7, -5, 6, 10}; 
-  for (int i = 0; i < preorder_traversal.size(); i++) {
+  for (std::size_t i = 0; i < preorder_traversal.size(); i++) {
     bst->insert(preorder_traversal[i]);
   }
   std::vector<int> inorder_traversal_v = inOrderTraversal(*bst);

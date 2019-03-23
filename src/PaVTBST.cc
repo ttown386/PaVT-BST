@@ -2,20 +2,26 @@
 // Created by ttown on 9/30/2018.
 //
 
-#include "PaVT/PaVTBST.h"
 #include <limits>
 #include <iostream>
 #include <algorithm>
+#include <thread>
 
+#include <PaVT/Base/node.h>
+#include <PaVT/PaVTBST.h>
+
+namespace pavt {
 // Constants
 const int MAXBF = 1; // Max Balance Factor
 const int MINBF = -1; // Min Balance Factor
 const int iMin = std::numeric_limits<int>::min(); // Min Integer
 const int iMax = std::numeric_limits<int>::max(); // Max Integer
-// For traversals
 const int LEFT = 0;
 const int RIGHT = 1;
 const int HERE = 2;
+
+thread_local pavt::LockManager* PaVTBST::lock_manager = new pavt::LockManager();
+
 
 PaVTBST::PaVTBST(bool isAvl) {
   this->isAvl = isAvl;
@@ -41,11 +47,11 @@ Node *PaVTBST::getRoot() {
 }
 
 Node *PaVTBST::getMinSentinel() {
-	return minSentinel;
+  return minSentinel;
 }
 
 Node *PaVTBST::getMaxSentinel() {
-	return maxSentinel;
+  return maxSentinel;
 }
 
 int PaVTBST::nextField(Node *node, int const &key) {
@@ -72,50 +78,50 @@ int PaVTBST::nextField(Node *node, int const &key) {
  * @return      The last node in the traversal which is now locked.
  */
 Node *PaVTBST::traverse(Node *node, int const &key) {
-	bool restart = false;
-	while (true) {
+  bool restart = false;
+  while (true) {
 
-		Node *curr = node;
-		int field = nextField(curr, key);
+    Node *curr = node;
+    int field = nextField(curr, key);
     Node *next = curr->get(field);
-		while (next != nullptr) {
-			curr = next;
+    while (next != nullptr) {
+      curr = next;
 
-			field = nextField(curr, key);
-			// We have found node
-			if (field == HERE) {
-				curr->lock.lock();
-				// If marked then break from first while loop and restart
-				if (curr->mark) {
-					curr->lock.unlock();
-					restart = true;
-					break;
-				}
+      field = nextField(curr, key);
+      // We have found node
+      if (field == HERE) {
+        lock(curr);
+        // If marked then break from first while loop and restart
+        if (curr->mark) {
+          unlock();
+          restart = true;
+          break;
+        }
 
-				// Only executed if curr is not marked
-				return curr;
-			}
+        // Only executed if curr is not marked
+        return curr;
+      }
       next = curr->get(field); 
-		}
+    }
 
-		if (restart == true) {
-			restart = false;
-			continue;
-		}
-		curr->lock.lock();
-		// grab snapshot
-		// check if restart is needed
-		bool goLeft = (key < curr->getKey() ? true : false);
-		Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
-		if (curr->mark || 
-      		(goLeft && (key <= snapShot->getKey())) ||
-			(!goLeft && (key >= snapShot->getKey()))) {
-			curr->lock.unlock();
-			continue;
-		}
+    if (restart == true) {
+      restart = false;
+      continue;
+    }
+    lock(curr);
+    // grab snapshot
+    // check if restart is needed
+    bool goLeft = (key < curr->getKey() ? true : false);
+    Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
+    if (curr->mark || 
+          (goLeft && (key <= snapShot->getKey())) ||
+      (!goLeft && (key >= snapShot->getKey()))) {
+      unlock();
+      continue;
+    }
 
-		return curr;
-	}
+    return curr;
+  }
 }
 
 
@@ -126,69 +132,76 @@ Node *PaVTBST::traverse(Node *node, int const &key) {
  * 
  * @param key key to be inserted into tree
  */
-void PaVTBST::insert(int const &key) {
+void PaVTBST::insert(const int& key) {
+  Node* new_node = new Node(key);
+  Node* return_node = insert(new_node);
+  if (return_node == nullptr) {
+    delete new_node;
+  } else {
+    if (isAvl) rebalance(return_node);
+  }
+}
+
+Node* PaVTBST::insert(Node* node) {
 
   // Continue to attempt insertion
   while (true) {
 
     // traverse and lock node
-    Node *curr = traverse(root, key);
+    Node *curr = traverse(root, node->getKey());
   
     // We have a duplicate
-    if (curr->getKey()== key) {
-      curr->lock.unlock();
-      return;
+    if (curr->getKey()== node->getKey()) {
+      unlockAll();
+      return nullptr;
     }
-    
     
     // No longer a leaf node
     if (
-      (key > curr->getKey() && curr->getRight()!=nullptr) ||
-      (key < curr->getKey() && curr->getLeft()!=nullptr)) {
-
-      curr->lock.unlock();
+        (node->getKey() > curr->getKey() && curr->getRight()!=nullptr) ||
+        (node->getKey() < curr->getKey() && curr->getLeft()!=nullptr)) {
+      unlockAll();
       continue;
     }
     
     // Insert node and update parent
-    Node *newNode = new Node(key);
-    newNode->setParent(curr);
+    node->setParent(curr);
 
     // Copy snaps from parent
-    bool parentIsLarger = key < curr->getKey();
+    bool parentIsLarger = node->getKey() < curr->getKey();
     Node *snapshot = (parentIsLarger ? curr->leftSnap.load() : curr->rightSnap.load());
 
 
     // If parent is larger, set left pointer to new node
     // and update snaps
     if (parentIsLarger) {
-      newNode->leftSnap = snapshot;
-      newNode->rightSnap = curr;
+      node->leftSnap = snapshot;
+      node->rightSnap = curr;
 
-      snapshot->rightSnap = newNode;
-      curr->leftSnap = newNode;
+      snapshot->rightSnap = node;
+      curr->leftSnap = node;
 
-      curr->setLeft(newNode);
+      curr->setLeft(node);
 
     // Otherwise set right pointer and update snaps
     } else {
-      newNode->leftSnap = curr;
-      newNode->rightSnap = snapshot;
+      node->leftSnap = curr;
+      node->rightSnap = snapshot;
 
-      snapshot->leftSnap = newNode;
-      curr->rightSnap = newNode;
+      snapshot->leftSnap = node;
+      curr->rightSnap = node;
 
-      curr->setRight(newNode);
+      curr->setRight(node);
     }
 
     // Unlock
-    curr->lock.unlock();
+    unlockAll();
 
     // Perform AVL rotations if applicable
     if (isAvl) {
       rebalance(curr);
     }
-    return;
+    return curr;
   }
 }
 
@@ -197,41 +210,52 @@ void PaVTBST::insert(int const &key) {
  * call returns. 
  * @param key The key to be removed from the tree
  */
-void PaVTBST::remove(int const &key) {
+void PaVTBST::remove(const int& key) {
+  auto balance_nodes = remove(root, key);
+  if (isAvl && balance_nodes->first != nullptr) {
+    rebalance(balance_nodes->first);
+    if (balance_nodes->second != nullptr) rebalance(balance_nodes->second);
+  } 
+  delete balance_nodes;
+}
+
+std::pair<Node*, Node*>* PaVTBST::remove(Node* node, const int& key) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
+
+  Node *toBalance1 = nullptr;
+  Node *toBalance2 = nullptr;
   
   // Continually attempt removal until call is returned
   while (true) {
 
     // Grab node
-    Node *curr = traverse(root, key);
+    Node *curr = traverse(node, key);
 
     // Already checked snapshots so return if current
     // node is not one to be deleted
     if (curr->getKey()!= key) {
-      curr->lock.unlock();
-      return;
+      unlockAll();
+      return new std::pair<Node*, Node*>(nullptr, nullptr);
     }
     
     // Lock Parent
     Node *parent = curr->getParent();
-    if (!parent->lock.try_lock()) {
-      curr->lock.unlock();
+    if (!tryLock(parent)) {
+      unlockAll();
       continue;
     }
 
-		// Some other thread has gone and changed things around
-		// Got to check if we already got removed otherwise unlock restart
-		if (parent != curr->getParent()) {
-      curr->lock.unlock();
-			parent->lock.unlock();
-			if (curr->mark) {
-				return;
-			}
-			continue;
-		}
+    // Some other thread has gone and changed things around
+    // Got to check if we already got removed otherwise unlock restart
+    if (parent != curr->getParent()) {
+      unlockAll();
+      if (curr->mark) {
+        return new std::pair<Node*, Node*>(nullptr, nullptr);
+      }
+      continue;
+    }
 
     
     Node *leftChild = curr->getLeft();
@@ -260,22 +284,18 @@ void PaVTBST::remove(int const &key) {
       }
 
       // Unlock all
-      curr->lock.unlock();
-      parent->lock.unlock();
+      unlockAll();
+      toBalance1 = parent;
 
-      if (isAvl) rebalance(parent);
-      return;
-    }
-
-    // Lock children
-    if (leftChild !=nullptr)leftChild->lock.lock();
-    if (rightChild !=nullptr) rightChild->lock.lock();
+    } else if (leftChild==nullptr || rightChild==nullptr) {
+    // if (leftChild !=nullptr) lock(leftChild);
+    // if (rightChild !=nullptr) lock(rightChild);
 
     /* A node with at most 1 child */
-    if (leftChild==nullptr || rightChild==nullptr) {
 
       bool hasRightChild = leftChild == nullptr;
       Node *currChild = (hasRightChild) ? rightChild : leftChild;
+      lock(currChild);
 
       // Load snaps
       minSnapNode = curr->leftSnap.load();
@@ -286,21 +306,15 @@ void PaVTBST::remove(int const &key) {
       
       // if the snapshot of curr is not its child then lock
       // that node as its path can be altered
-      bool lockedSnap = false;
       if (snapshot!=currChild) {
-        snapshot->lock.lock();
-        lockedSnap = true;
+        lock(snapshot);
       }
 
       // if the snapshot has changed unlock all and restart
       if ((hasRightChild && snapshot->leftSnap.load()!=curr) || 
           (!hasRightChild && snapshot->rightSnap.load()!=curr) ||
-					snapshot->mark) {
-
-        if (lockedSnap) snapshot->lock.unlock(); 
-        currChild->lock.unlock();
-        curr->lock.unlock();
-        parent->lock.unlock();
+          snapshot->mark) {
+        unlockAll();
         continue;
       }
 
@@ -319,192 +333,131 @@ void PaVTBST::remove(int const &key) {
       minSnapNode->rightSnap = maxSnapNode;
       maxSnapNode->leftSnap = minSnapNode;
 
-      // Unlock all
-      if (lockedSnap) snapshot->lock.unlock(); 
-      currChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
+      unlockAll();
+      toBalance1 = parent;
+    } else {
+      lock(leftChild);
+      lock(rightChild);
 
-      if (isAvl) rebalance(parent);
-      return;
-    }
+      /* Hard Cases */
+      minSnapNode = curr->leftSnap.load();
+      maxSnapNode = curr->rightSnap.load();
 
-    /* Hard Cases */
-    minSnapNode = curr->leftSnap.load();
-    maxSnapNode = curr->rightSnap.load();
-
-    
-    // Lock if leftSnap is not the leftChild
-    bool lockedPred = false;
-    if (minSnapNode != leftChild) {
-      minSnapNode->lock.lock();
-      lockedPred = true;
-    } 
-
-    // Check if the LeftSnapshot's right snapshot is the node
-    // to be removed
-    if (minSnapNode->rightSnap!=curr || minSnapNode->mark) {
-      if (lockedPred) minSnapNode->lock.unlock();
-      rightChild->lock.unlock();
-      leftChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
-      continue;
-    }
-
-    
-    /* Node with where the right child's left node is null */
-    if (rightChild->getLeft() == nullptr) {
-
-      curr->mark = true;
-
-      // Updated pointers
-      rightChild->setLeft(leftChild);
-      leftChild->setParent(rightChild);
-      rightChild->setParent(parent);
-
-      if (parent->getLeft()==curr) {
-        parent->setLeft(rightChild);
-      } else {
-        parent->setRight(rightChild);
-      }
-
-      // Update snaps
-      minSnapNode->rightSnap = maxSnapNode;
-      maxSnapNode->leftSnap = minSnapNode;
-
-      // Unlock all
-      if (lockedPred) minSnapNode->lock.unlock();
-      rightChild->lock.unlock();
-      leftChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
       
-      if (isAvl) rebalance(rightChild);
+      // Lock if leftSnap is not the leftChild
+      if (minSnapNode != leftChild) {
+        lock(minSnapNode);
+      } 
 
-      return;
-    }
-
-    /* Hardest Case */
-
-    Node *succ = maxSnapNode;
-    Node *succParent = succ->getParent();
-
-    // Successor's parent is no the right child
-    bool lockedSuccParent = false;
-    if (succParent!=rightChild) {
-      succParent->lock.lock();
-
-      if (maxSnapNode->getParent() != succParent || maxSnapNode->mark) {
-        succParent->lock.unlock();
-        if (lockedPred) minSnapNode->lock.unlock();
-        rightChild->lock.unlock();
-        leftChild->lock.unlock();
-        curr->lock.unlock();
-        parent->lock.unlock();
+      // Check if the LeftSnapshot's right snapshot is the node
+      // to be removed
+      if (minSnapNode->rightSnap!=curr || minSnapNode->mark) {
+        unlockAll();
         continue;
       }
+      /* Node with where the right child's left node is null */
+      if (rightChild->getLeft() == nullptr) {
 
-      lockedSuccParent = true;
-    }
+        curr->mark = true;
 
-    // Lock successor
-    succ->lock.lock();
-    if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->mark) {
-      succ->lock.unlock();
-      if (lockedSuccParent) succParent->lock.unlock();
-      if (lockedPred) minSnapNode->lock.unlock();
-      rightChild->lock.unlock();
-      leftChild->lock.unlock();
-      curr->lock.unlock();
-      parent->lock.unlock();
-      continue;
-    }
+        // Updated pointers
+        rightChild->setLeft(leftChild);
+        leftChild->setParent(rightChild);
+        rightChild->setParent(parent);
 
-    // Lock Right Child if successor has a right child
-    // and rightSnap if it is not the right child
-    bool lockedSuccRightSnap = false;
-    bool lockedSuccRightChild = false;
-    
-    Node *succRightChild = succ->getRight();
-    Node *succRightSnapshot = succ->rightSnap.load();
+        if (parent->getLeft()==curr) {
+          parent->setLeft(rightChild);
+        } else {
+          parent->setRight(rightChild);
+        }
 
-    if (succRightChild!=nullptr)  {
-
-      succRightChild->lock.lock();
-      lockedSuccRightChild = true;
-
-      succRightSnapshot = succ->rightSnap.load();
-      if (succRightSnapshot!=succRightChild) {
-        succRightSnapshot->lock.lock();
-        lockedSuccRightSnap = true;
-      }
-
-      // Check if it's left snap is still the successor
-      if (succRightSnapshot->leftSnap.load()!=succ||succRightSnapshot->mark) {
+        // Update snaps
+        minSnapNode->rightSnap = maxSnapNode;
+        maxSnapNode->leftSnap = minSnapNode;
 
         // Unlock all
-        if (lockedSuccRightSnap) succRightSnapshot->lock.unlock();
-        if (lockedSuccRightChild) succRightChild->lock.unlock();
-        succ->lock.unlock();
-        if (lockedSuccParent) succParent->lock.unlock();
-        if (lockedPred) minSnapNode->lock.unlock();
-        rightChild->lock.unlock();
-        leftChild->lock.unlock();
-        curr->lock.unlock();
-        parent->lock.unlock();
-        continue;
+        unlockAll();
+        toBalance1 = rightChild; 
+
+      } else {
+        /* Hardest Case */
+        Node *succ = maxSnapNode;
+        Node *succParent = succ->getParent();
+
+        // Successor's parent is no the right child
+        if (succParent!=rightChild) {
+          lock(succParent);
+
+          if (maxSnapNode->getParent() != succParent || maxSnapNode->mark) {
+            unlockAll();
+            continue;
+          }
+        }
+
+        // Lock successor
+        lock(succ);
+        if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->mark) {
+          unlockAll();
+          continue;
+        }
+
+        // Lock Right Child if successor has a right child
+        // and rightSnap if it is not the right child
+        Node *succRightChild = succ->getRight();
+        Node *succRightSnapshot = succ->rightSnap.load();
+
+        if (succRightChild!=nullptr)  {
+          lock(succRightChild);
+          succRightSnapshot = succ->rightSnap.load();
+
+          if (succRightSnapshot!=succRightChild) {
+            lock(succRightSnapshot);
+          }
+          // Check if it's left snap is still the successor
+          if (succRightSnapshot->leftSnap.load()!=succ||succRightSnapshot->mark) {
+            unlockAll();
+            continue;
+          }
+        }
+
+        // Mark the node
+        curr->mark = true;
+
+        succ->setRight(rightChild);
+        rightChild->setParent(succ);
+
+        succ->setLeft(leftChild);
+        leftChild->setParent(succ);
+
+        succ->setParent(parent);
+
+        
+        if (parentIsLarger) {
+          parent->setLeft(succ);
+        } else {
+          parent->setRight(succ);
+        }
+
+        succParent->setLeft(succRightChild);
+
+        if (succRightChild!=nullptr)
+          succRightChild->setParent(succParent);
+        
+        // Update Snaps
+        succ->rightSnap = succRightSnapshot;
+        succRightSnapshot->leftSnap = succ;
+
+        succ->leftSnap = minSnapNode;
+        minSnapNode->rightSnap = succ;
+
+        // Unlock All
+        unlockAll();
+        toBalance1 = succ;
+        toBalance2 = succParent;
       }
     }
-
-    // Mark the node
-    curr->mark = true;
-
-    succ->setRight(rightChild);
-    rightChild->setParent(succ);
-
-    succ->setLeft(leftChild);
-    leftChild->setParent(succ);
-
-    succ->setParent(parent);
-
-    
-    if (parentIsLarger) {
-      parent->setLeft(succ);
-    } else {
-      parent->setRight(succ);
-    }
-
-    succParent->setLeft(succRightChild);
-
-    if (succRightChild!=nullptr)
-      succRightChild->setParent(succParent);
-    
-    // Update Snaps
-    succ->rightSnap = succRightSnapshot;
-    succRightSnapshot->leftSnap = succ;
-
-    succ->leftSnap = minSnapNode;
-    minSnapNode->rightSnap = succ;
-
-    // Unlock All
-    if (lockedSuccRightSnap) succRightSnapshot->lock.unlock();
-    if (lockedSuccRightChild) succRightChild->lock.unlock();
-    succ->lock.unlock();
-    if (lockedSuccParent) succParent->lock.unlock();
-    if (lockedPred) minSnapNode->lock.unlock();
-    rightChild->lock.unlock();
-    leftChild->lock.unlock();
-    curr->lock.unlock();
-    parent->lock.unlock();
-
-    if (isAvl) {
-      rebalance(succ);
-      rebalance(succParent);
-    } 
-
-    return;
   }
+  return new std::pair<Node*, Node*>(toBalance1, toBalance2);
 }
 
 
@@ -554,7 +507,6 @@ bool PaVTBST::contains(int const &key) {
     if (curr->mark || 
       (goLeft && (key <= snapShot->getKey())) ||
       (!goLeft && (key >= snapShot->getKey()))) {
-      curr->lock.unlock();
       continue;
     }
 
@@ -785,3 +737,20 @@ void PaVTBST::rebalance(Node *node) {
     }
   }
 }
+
+void PaVTBST::lock(Node* node) {
+  PaVTBST::lock_manager->lock(node);
+}
+
+bool PaVTBST::tryLock(Node* node) {
+  return PaVTBST::lock_manager->tryLock(node);
+}
+
+void PaVTBST::unlock() {
+  PaVTBST::lock_manager->unlock();
+}
+
+void PaVTBST::unlockAll() {
+  PaVTBST::lock_manager->unlockAll();
+}
+} // namespace pavt
