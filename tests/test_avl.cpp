@@ -5,6 +5,7 @@
 
 #include "UtilitiesBST.h"
 #include "PaVT/PaVTBST.h"
+#include "PaVT/avl.h"
 
 using namespace pavt;
 namespace {
@@ -13,7 +14,7 @@ class TestPaVTAVL : public testing::Test {
  protected:
   const int max_val = std::numeric_limits<int>::max();
   PaVTBST* avl;
-  PaVTBST* small_avl;
+  AVL* small_avl;
   const std::vector<int> dfs_balanced {max_val, 40, 20, 60, 10, 30, 50, 70};
   const std::vector<int> inorder_balanced {10, 20, 30, 40, 50, 60, 70, max_val};
   const std::vector<int> preorder_small {max_val, 4, 10};
@@ -27,6 +28,7 @@ class TestPaVTAVL : public testing::Test {
 
   void TearDown() {
     delete avl;
+    delete small_avl;
   }
   
   void insert_vector_into_tree(PaVTBST* tree, 
@@ -43,8 +45,8 @@ class TestPaVTAVL : public testing::Test {
     return bst;
   }
 
-  PaVTBST* init_small_tree() {
-    PaVTBST* bst = new PaVTBST(true);
+  AVL* init_small_tree() {
+    AVL* bst = new AVL();
     insert_vector_into_tree(bst, preorder_small);
     return bst;
   }
@@ -55,7 +57,7 @@ TEST_F(TestPaVTAVL, InsertSingleRightRotation) {
   int new_val = 14;
   const std::vector<int> new_preorder = {max_val, 10, 4, new_val};
   const std::vector<int> new_inorder = {4, 10, new_val, max_val}; 
-  insert_vector_into_tree(small_avl, new_preorder);
+  small_avl->insert(new_val);
   std::vector<int> inorder = inOrderTraversal(*small_avl);
   std::vector<int> preorder = preOrderTraversal(*small_avl);
   EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));

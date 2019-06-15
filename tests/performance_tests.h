@@ -9,9 +9,12 @@
 #include <unordered_map>
 #include <chrono>
 
-#include "PaVT/PaVTBST.h"
+#include <PaVT/PaVTBST.h>
 
 using namespace pavt;
+
+typedef PaVTBST* (*data_structure_function)(const int&, std::random_device&);
+
 struct BenchmarkData {
   int total_operations;
   int insert_count;
@@ -44,6 +47,9 @@ std::vector<double> run_benchmark(std::random_device& rd,
                                   BenchmarkData& benchmark_data,
                                   const int struct_i);
 PaVTBST* init_BST(int numberOfNodes, bool AVL, std::random_device& rd);
+PaVTBST* load_BST(const int& number_of_nodes, std::random_device& rd);
+PaVTBST* load_AVL(const int& number_of_nodes, std::random_device& rd);
+PaVTBST* initialize_data_structure(const int number_of_nodes, std::random_device& rd);
 double measure_run(PaVTBST* bst, const int n_threads,
                    const std::vector<int> input_keys,
                    const std::vector<int> op_list);

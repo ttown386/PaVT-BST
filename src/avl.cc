@@ -1,16 +1,19 @@
 #include <PaVT/avl.h>
+#include <iostream>
+#include <stdlib.h>
 
 namespace pavt {
 
-const int MAXBF = 1; // Max Balance Factor
-const int MINBF = -1; // Min Balance Factor
+AVL::AVL() : PaVTBST(){}
 
 void AVL::insert(const int& key) {
   Node* new_node = new Node(key);
   Node* return_node = PaVTBST::insert(new_node);
+  printf("Inserting %d\n", key);
   if (return_node == nullptr) {
     delete new_node;
   } else {
+    std::cout<< return_node->getKey() << std::endl;
     rebalance(return_node);
   }
 }

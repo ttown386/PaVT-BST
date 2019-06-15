@@ -7,6 +7,7 @@ namespace pavt {
 
 class AVL : public PaVTBST {
  public:
+  AVL();
   void insert(const int& key);
   void remove(const int& key);
  protected:
