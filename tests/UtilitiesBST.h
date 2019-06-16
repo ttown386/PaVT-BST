@@ -7,7 +7,7 @@
 #include <queue>
 #include <iostream>
 
-#include "PaVT/PaVTBST.h"
+#include "PaVT/bst.h"
 
 using namespace pavt;
 class NodeDepth {
@@ -21,7 +21,7 @@ class NodeDepth {
 };
 
 inline 
-std::vector<int> inOrderTraversal(PaVTBST &bst) {
+std::vector<int> inOrderTraversal(BST &bst) {
   std::stack<Node*> stack;
 
   std::vector<int> return_vals;
@@ -43,7 +43,7 @@ std::vector<int> inOrderTraversal(PaVTBST &bst) {
 }
 
 inline 
-std::vector<int> preOrderTraversal(PaVTBST &bst) {
+std::vector<int> preOrderTraversal(BST &bst) {
 
   std::stack<Node*> stack;
   std::vector<int> return_vals;
@@ -67,7 +67,7 @@ std::vector<int> preOrderTraversal(PaVTBST &bst) {
 }
 
 inline
-void printInOrderTraversal(PaVTBST &bst) {
+void printInOrderTraversal(BST &bst) {
 
   std::stack<Node*> stack;
 
@@ -90,7 +90,7 @@ void printInOrderTraversal(PaVTBST &bst) {
 }
 
 inline
-void printPreOrderTraversal(PaVTBST &bst) {
+void printPreOrderTraversal(BST &bst) {
 
   std::stack<Node*> stack;
 
@@ -114,7 +114,7 @@ void printPreOrderTraversal(PaVTBST &bst) {
 }
 
 inline
-bool check (PaVTBST &bst) {
+bool check (BST &bst) {
   Node *curr = bst.getMinSentinel();
   int currVal = curr->getKey();
   Node *last = bst.getMaxSentinel();
@@ -128,7 +128,7 @@ bool check (PaVTBST &bst) {
 }
 
 inline
-void printTreeDepth(PaVTBST &bst) {
+void printTreeDepth(BST &bst) {
 
   Node *start = bst.getRoot();
   std::queue<NodeDepth *> q;

@@ -1,3 +1,5 @@
+#include <PaVT/avl.h>
+
 #include "performance_tests.h"
 
 const std::vector<int> numThreads = {1, 2, 4, 8};
@@ -12,6 +14,11 @@ const std::vector<std::string> benchmarks {
 const std::vector<std::string> datastructure {
   "BINARY SEARCH TREE",
   "AVL TREE"
+};
+
+const std::vector<data_structure_function> data_structure_map {
+  load_BST,
+  load_AVL
 };
 
 int main(int argc, char **argv) {
@@ -98,7 +105,7 @@ std::vector<double> run_benchmark(std::random_device& rd,
 
   int runs = 10;
   for (int run=0; run<runs; run++) {
-    PaVTBST *bst = init_BST(n_insert, struct_i, rd);
+    BST *bst = init_BST(n_insert, struct_i, rd);
     double run_time = measure_run(bst, n_threads, input_keys, op_list);
     run_data.push_back(run_time); 
     delete bst;
@@ -107,14 +114,15 @@ std::vector<double> run_benchmark(std::random_device& rd,
 }
 
 
-PaVTBST* init_BST(int numberOfNodes, bool AVL, std::random_device& rd) {
+BST* init_BST(int numberOfNodes, bool AVL, std::random_device& rd) {
 
-  PaVTBST *bst = new PaVTBST(AVL);
+  BST *bst = new BST();
 
   int min = -1*numberOfNodes;
-  std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+  std::mt19937 rng(rd());    // random-number engine used (mersenne-twister in this case)
   std::uniform_int_distribution<int> uni(min,0); // guaranteed unbiased
   auto random_integer = uni(rng);
+
 
   int start = random_integer;
   int end = 2*numberOfNodes + start;
@@ -134,8 +142,60 @@ PaVTBST* init_BST(int numberOfNodes, bool AVL, std::random_device& rd) {
   return bst;
 }
 
+BST* load_BST(const int& number_of_nodes, std::random_device& rd) {
+  BST *bst = new BST();
 
-double measure_run(PaVTBST* bst, const int n_threads,
+  int min = -1*number_of_nodes;
+  std::mt19937 rng(rd());    // random-number engine used (mersenne-twister in this case)
+  std::uniform_int_distribution<int> uni(min,0); // guaranteed unbiased
+  auto random_integer = uni(rng);
+
+  int start = random_integer;
+  int end = 2*number_of_nodes + start;
+
+  std::vector<int> nodevals;
+  int count = 0;
+  for (int i=start; i<end; i+=2) {
+    nodevals.push_back(i);
+    count++;
+  }
+  std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
+
+  for (std::size_t i=0; i<nodevals.size(); i++) {
+    bst->insert(nodevals.at(i));
+  }
+
+  return bst;
+}
+
+BST* load_AVL(const int& number_of_nodes, std::random_device& rd) {
+  AVL *bst = new AVL();
+
+  int min = -1*number_of_nodes;
+  std::mt19937 rng(rd());    // random-number engine used (mersenne-twister in this case)
+  std::uniform_int_distribution<int> uni(min,0); // guaranteed unbiased
+  auto random_integer = uni(rng);
+
+  int start = random_integer;
+  int end = 2*number_of_nodes + start;
+
+  std::vector<int> nodevals;
+  int count = 0;
+  for (int i=start; i<end; i+=2) {
+    nodevals.push_back(i);
+    count++;
+  }
+  std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
+
+  for (std::size_t i=0; i<nodevals.size(); i++) {
+    bst->insert(nodevals.at(i));
+  }
+
+  return bst;
+}
+
+
+double measure_run(BST* bst, const int n_threads,
                    const std::vector<int> input_keys,
                    const std::vector<int> op_list) {
   auto t1 = std::chrono::high_resolution_clock::now();
@@ -147,7 +207,7 @@ double measure_run(PaVTBST* bst, const int n_threads,
 }
 
 
-void launch_threads(PaVTBST* bst, const int n_threads,
+void launch_threads(BST* bst, const int n_threads,
                     const std::vector<int> input_keys,
                     const std::vector<int> op_list) {
   std::thread threads[n_threads];
@@ -202,7 +262,7 @@ std::vector<int> init_ops(int add, int rem, int cont) {
 }
 
 
-void routine_4(PaVTBST &bst, int id, int n_threads, 
+void routine_4(BST &bst, int id, int n_threads, 
                std::vector<int> keys, std::vector<int> ops) {
   int add = id;
   int rem = id;

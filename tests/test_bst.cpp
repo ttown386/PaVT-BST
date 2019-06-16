@@ -8,15 +8,15 @@
 #include <gmock/gmock.h>
 
 #include "UtilitiesBST.h"
-#include "PaVT/PaVTBST.h"
+#include "PaVT/bst.h"
 
 using namespace pavt;
 namespace {
 
-class TestPaVTBST : public testing::Test {
+class TestBST : public testing::Test {
  protected:
   const int max_val = std::numeric_limits<int>::max();
-  PaVTBST *balanced_bst;
+  BST *balanced_bst;
   std::vector<int> balanced_preorder; 
   std::vector<int> balanced_inorder;
 
@@ -31,7 +31,7 @@ class TestPaVTBST : public testing::Test {
     delete balanced_bst;
   }
 
-  void insert_vector_into_tree(PaVTBST* tree, 
+  void insert_vector_into_tree(BST* tree, 
                                const std::vector<int>& node_list) {
     for (std::size_t i=0; i < node_list.size(); i++) {
       tree->insert(node_list[i]);
@@ -39,8 +39,8 @@ class TestPaVTBST : public testing::Test {
   }
 
  private:
-  PaVTBST* init_balanced_bst() {
-    PaVTBST* bst = new PaVTBST();
+  BST* init_balanced_bst() {
+    BST* bst = new BST();
     for (std::size_t i = 0; i < balanced_preorder.size(); i++) {
       bst->insert(balanced_preorder[i]);
     }
@@ -49,8 +49,8 @@ class TestPaVTBST : public testing::Test {
 };
 
 
-TEST_F(TestPaVTBST, Insert) {
-  PaVTBST* bst = new PaVTBST();
+TEST_F(TestBST, Insert) {
+  BST* bst = new BST();
   std::vector<int> inorder_traversal = {-5, 6, 7, 10, max_val};
   std::vector<int> preorder_traversal = {max_val, 7, -5, 6, 10}; 
   for (std::size_t i = 0; i < preorder_traversal.size(); i++) {
@@ -64,7 +64,7 @@ TEST_F(TestPaVTBST, Insert) {
 }
 
 
-TEST_F(TestPaVTBST, InsertAlreadyExists) {
+TEST_F(TestBST, InsertAlreadyExists) {
   std::vector<int> first_preorder = inOrderTraversal(*balanced_bst);
   insert_vector_into_tree(balanced_bst, balanced_preorder);
   std::vector<int> second_preorder = inOrderTraversal(*balanced_bst);
@@ -72,12 +72,12 @@ TEST_F(TestPaVTBST, InsertAlreadyExists) {
 }
 
 
-TEST_F(TestPaVTBST, InsertDoesntAddSentinelNodes) {
+TEST_F(TestBST, InsertDoesntAddSentinelNodes) {
   ;
 }
 
 
-TEST_F(TestPaVTBST, Contains) {
+TEST_F(TestBST, Contains) {
   int val_1 = 70;
   int val_2 = 200;
   bool found_1 = balanced_bst->contains(val_1);
@@ -87,12 +87,12 @@ TEST_F(TestPaVTBST, Contains) {
 }
 
 
-TEST_F(TestPaVTBST, ContainsDoesntFindSentielNodes) {
+TEST_F(TestBST, ContainsDoesntFindSentielNodes) {
   ;
 }
 
 
-TEST_F(TestPaVTBST, DeleteLeaf) {
+TEST_F(TestBST, DeleteLeaf) {
   int node_val = 70;
   balanced_bst->remove(node_val);
   balanced_preorder.pop_back();
@@ -107,7 +107,7 @@ TEST_F(TestPaVTBST, DeleteLeaf) {
 }
 
 
-TEST_F(TestPaVTBST, DeleteNodeWithLeftChild) {
+TEST_F(TestBST, DeleteNodeWithLeftChild) {
   int insert_val = 45;
   int remove_val = 50;
   balanced_bst->insert(insert_val);
@@ -123,7 +123,7 @@ TEST_F(TestPaVTBST, DeleteNodeWithLeftChild) {
 }
 
 
-TEST_F(TestPaVTBST, DeleteNodeWithRightChild) {
+TEST_F(TestBST, DeleteNodeWithRightChild) {
   int new_val = 80;
   int old_val = 70;
   std::vector<int> new_preorder {max_val, 40, 20, 10, 30, 60, 50, 80};
@@ -137,7 +137,7 @@ TEST_F(TestPaVTBST, DeleteNodeWithRightChild) {
 }
 
 
-TEST_F(TestPaVTBST, DeleteNodeWithTwoLeafs) {
+TEST_F(TestBST, DeleteNodeWithTwoLeafs) {
   int old_val = 60;
   std::vector<int> new_preorder {max_val, 40, 20, 10, 30, 70, 50};
   std::vector<int> new_inorder {10, 20, 30, 40, 50, 70, max_val};
@@ -149,7 +149,7 @@ TEST_F(TestPaVTBST, DeleteNodeWithTwoLeafs) {
 }
 
 
-TEST_F(TestPaVTBST, DeleteNodeRightChildLeftSubtreeContainsSuccessorLeaf) {
+TEST_F(TestBST, DeleteNodeRightChildLeftSubtreeContainsSuccessorLeaf) {
   int new_val = 45;
   int old_val = 40;
   std::vector<int> new_preorder {max_val, 45, 20, 10, 30, 60, 50, 70};
@@ -163,7 +163,7 @@ TEST_F(TestPaVTBST, DeleteNodeRightChildLeftSubtreeContainsSuccessorLeaf) {
 }
 
 
-TEST_F(TestPaVTBST, DeleteNodeRightChildIsLeafSuccessorsParent) {
+TEST_F(TestBST, DeleteNodeRightChildIsLeafSuccessorsParent) {
   int new_val = 65;
   int old_val = 60;
   std::vector<int> new_preorder {max_val, 40, 20, 10, 30, 65, 50, 70};
@@ -177,7 +177,7 @@ TEST_F(TestPaVTBST, DeleteNodeRightChildIsLeafSuccessorsParent) {
 }
 
 
-TEST_F(TestPaVTBST, DeleteNodeSucessorHasRightChild) {
+TEST_F(TestBST, DeleteNodeSucessorHasRightChild) {
   int new_val_1 = 45;
   int new_val_2 = 47;
   int old_val = 40;
@@ -194,7 +194,7 @@ TEST_F(TestPaVTBST, DeleteNodeSucessorHasRightChild) {
 }
 
 
-TEST_F(TestPaVTBST, NoneDeleted) {
+TEST_F(TestBST, NoneDeleted) {
   int old_val = -100;
   balanced_bst->remove(old_val);
   std::vector<int> preorder = preOrderTraversal(*balanced_bst);
@@ -204,7 +204,7 @@ TEST_F(TestPaVTBST, NoneDeleted) {
 }
 
 
-TEST_F(TestPaVTBST, DeleteDoesntRemoveSentielNodes) {
+TEST_F(TestBST, DeleteDoesntRemoveSentielNodes) {
   ;
 }
 }
