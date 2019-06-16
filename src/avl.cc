@@ -4,22 +4,18 @@
 
 namespace pavt {
 
-AVL::AVL() : PaVTBST(){}
-
 void AVL::insert(const int& key) {
   Node* new_node = new Node(key);
-  Node* return_node = PaVTBST::insert(new_node);
-  printf("Inserting %d\n", key);
+  Node* return_node = BinarySearchTree::insert(new_node);
   if (return_node == nullptr) {
     delete new_node;
   } else {
-    std::cout<< return_node->getKey() << std::endl;
     rebalance(return_node);
   }
 }
 
 void AVL::remove(const int& key) {
-  auto balance_nodes = PaVTBST::remove(root, key);
+  auto balance_nodes = BinarySearchTree::remove(root, key);
   if (isAvl && balance_nodes->first != nullptr) {
     rebalance(balance_nodes->first);
     if (balance_nodes->second != nullptr) rebalance(balance_nodes->second);

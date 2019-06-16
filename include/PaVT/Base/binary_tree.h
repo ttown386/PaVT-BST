@@ -87,50 +87,15 @@ class Node : public base::Node {
     this->parent = node;
   }
 };
+
 namespace base {
 
 class BinaryTree {
- public:
-  inline BinaryTree(bool isAvl=false) {
-    this->isAvl = isAvl;
-
-    minSentinel = new pavt::Node(iMin);
-    maxSentinel = new pavt::Node(iMax);
-
-    maxSentinel->setParent(minSentinel);
-    minSentinel->setRight(maxSentinel);
-
-    maxSentinel->leftSnap = minSentinel;
-    minSentinel->rightSnap = maxSentinel;
-
-    this->root = maxSentinel;
-  }
-
-  inline ~BinaryTree() {
-    delete minSentinel;
-  }
-
-  bool contains(const int& key);
-  pavt::Node *getRoot();
-  pavt::Node *getMinSentinel();
-  pavt::Node *getMaxSentinel();
-  static thread_local pavt::LockManager* lock_manager;
-
-  virtual void insert(const int& key) = 0;
-  virtual void remove(const int& key) = 0;
-
  protected:
   bool isAvl;
   pavt::Node *root;
   pavt::Node *maxSentinel;
   pavt::Node *minSentinel;
-
-  int nextField(pavt::Node *node, const int &key);
-  pavt::Node* traverse(pavt::Node *node, const int &key);
-  void lock(Node* node);
-  bool tryLock(Node* node);
-  void unlock();
-  void unlockAll();
 };
 } // namespace base
 } //namespace pavt

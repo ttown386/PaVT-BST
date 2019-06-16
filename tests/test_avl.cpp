@@ -13,7 +13,7 @@ namespace {
 class TestPaVTAVL : public testing::Test {
  protected:
   const int max_val = std::numeric_limits<int>::max();
-  PaVTBST* avl;
+  AVL* avl;
   AVL* small_avl;
   const std::vector<int> dfs_balanced {max_val, 40, 20, 60, 10, 30, 50, 70};
   const std::vector<int> inorder_balanced {10, 20, 30, 40, 50, 60, 70, max_val};
@@ -39,8 +39,8 @@ class TestPaVTAVL : public testing::Test {
   }
 
  private:
-  PaVTBST* init_balanced_avl() {
-    PaVTBST* bst = new PaVTBST(true);
+  AVL* init_balanced_avl() {
+    AVL* bst = new AVL(true);
     insert_vector_into_tree(bst, dfs_balanced);
     return bst;
   }
@@ -83,7 +83,7 @@ TEST_F(TestPaVTAVL, AVLInsertLeftRightRot) {
   std::vector<int> avl_inorder(avl_preorder.begin(), avl_preorder.end());
   std::sort(avl_inorder.begin(), avl_inorder.end());
 
-  PaVTBST* avl_tree = new PaVTBST(true);
+  AVL* avl_tree = new AVL(true);
   for (std::size_t i=0; i<avl_data.size(); i++) {
     avl_tree->insert(avl_data[i]);
   }
@@ -103,7 +103,7 @@ TEST_F(TestPaVTAVL, AVLInsertRightLeftRot) {
   std::vector<int> avl_inorder(avl_preorder.begin(), avl_preorder.end());
   std::sort(avl_inorder.begin(), avl_inorder.end());
 
-  PaVTBST* avl_tree = new PaVTBST(true);
+  AVL* avl_tree = new AVL(true);
   for (auto key = avl_data.begin(); key != avl_data.end(); key++) {
     avl_tree->insert(*key);
   }
