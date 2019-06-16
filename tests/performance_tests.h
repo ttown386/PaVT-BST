@@ -9,11 +9,11 @@
 #include <unordered_map>
 #include <chrono>
 
-#include <PaVT/PaVTBST.h>
+#include <PaVT/bst.h>
 
 using namespace pavt;
 
-typedef PaVTBST* (*data_structure_function)(const int&, std::random_device&);
+typedef BST* (*data_structure_function)(const int&, std::random_device&);
 
 struct BenchmarkData {
   int total_operations;
@@ -46,20 +46,20 @@ BenchmarkData setup_benchmark_data(const int n_threads,
 std::vector<double> run_benchmark(std::random_device& rd,
                                   BenchmarkData& benchmark_data,
                                   const int struct_i);
-PaVTBST* init_BST(int numberOfNodes, bool AVL, std::random_device& rd);
-PaVTBST* load_BST(const int& number_of_nodes, std::random_device& rd);
-PaVTBST* load_AVL(const int& number_of_nodes, std::random_device& rd);
-PaVTBST* initialize_data_structure(const int number_of_nodes, std::random_device& rd);
-double measure_run(PaVTBST* bst, const int n_threads,
+BST* init_BST(int numberOfNodes, bool AVL, std::random_device& rd);
+BST* load_BST(const int& number_of_nodes, std::random_device& rd);
+BST* load_AVL(const int& number_of_nodes, std::random_device& rd);
+BST* initialize_data_structure(const int number_of_nodes, std::random_device& rd);
+double measure_run(BST* bst, const int n_threads,
                    const std::vector<int> input_keys,
                    const std::vector<int> op_list);
-void launch_threads(PaVTBST* bst, const int n_threads,
+void launch_threads(BST* bst, const int n_threads,
                     const std::vector<int> input_keys,
                     const std::vector<int> op_list);
 std::vector<int> init_random_list_of_ints(int num);
 std::vector<Node* > init_list(int num);
 std::vector<int> init_ops(int add, int rem, int cont);
-void routine_4(PaVTBST &bst, int id, int n_threads, 
+void routine_4(BST &bst, int id, int n_threads, 
                std::vector<int> keys, std::vector<int> ops);
 void print_header(const std::string& datastructure_name);
 void print_header();

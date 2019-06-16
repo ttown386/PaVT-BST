@@ -14,17 +14,11 @@
 
 namespace pavt {
 
-class PaVTBST : public base::BinarySearchTree {
+class BST: public base::BinarySearchTree {
  public:
   using base::BinarySearchTree::BinarySearchTree;
-  void insert(const int &key);
-  void remove(const int &key);
-
- protected:
-  void rotateLeft(Node *child, Node *node, Node *parent);
-  void rotateRight(Node *child, Node *node, Node *parent);
-  int height(Node *node);
-  void rebalance(Node *node);
+  void insert(const int& key);
+  void remove(const int& key);
 };
 }
 #endif // PAVT_BINARY_SEARCH_TREE_H_

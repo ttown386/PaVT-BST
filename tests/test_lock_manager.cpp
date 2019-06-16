@@ -7,7 +7,7 @@
 
 #include "UtilitiesBST.h"
 #include "PaVT/Base/node.h"
-#include "PaVT/PaVTBST.h"
+#include "PaVT/bst.h"
 #include "PaVT/lock_manager.h"
 
 namespace {

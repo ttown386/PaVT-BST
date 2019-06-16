@@ -1,13 +1,13 @@
 #ifndef PAVT_AVL_TREE_H_
 #define PAVT_AVL_TREE_H_
 
-#include <PaVT/PaVTBST.h>
+#include <PaVT/bst.h>
 
 namespace pavt {
 
-class AVL : public PaVTBST {
+class AVL : public BST {
  public:
-  using PaVTBST::PaVTBST;
+  using BST::BST;
   void insert(const int& key);
   void remove(const int& key);
  protected:

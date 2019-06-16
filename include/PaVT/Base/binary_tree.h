@@ -25,8 +25,8 @@ class Node : public base::Node {
   Node *parent;
   int height;
  public:
-  std::atomic<Node *> leftSnap;
-  std::atomic<Node *> rightSnap;
+  std::atomic<Node* > leftSnap;
+  std::atomic<Node* > rightSnap;
   Node(int const& key) {
     setKey(key);
     setLeft(nullptr);
@@ -93,9 +93,9 @@ namespace base {
 class BinaryTree {
  protected:
   bool isAvl;
-  pavt::Node *root;
-  pavt::Node *maxSentinel;
-  pavt::Node *minSentinel;
+  pavt::Node* root;
+  pavt::Node* maxSentinel;
+  pavt::Node* minSentinel;
 };
 } // namespace base
 } //namespace pavt

@@ -4,7 +4,7 @@
 #include <gmock/gmock.h>
 
 #include "UtilitiesBST.h"
-#include "PaVT/PaVTBST.h"
+#include "PaVT/bst.h"
 #include "PaVT/avl.h"
 
 using namespace pavt;
@@ -31,7 +31,7 @@ class TestPaVTAVL : public testing::Test {
     delete small_avl;
   }
   
-  void insert_vector_into_tree(PaVTBST* tree, 
+  void insert_vector_into_tree(AVL* tree, 
                                const std::vector<int>& node_list) {
     for (std::size_t i=0; i < node_list.size(); i++) {
       tree->insert(node_list[i]);

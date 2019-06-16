@@ -1,6 +1,7 @@
-#include <PaVT/avl.h>
 #include <iostream>
 #include <stdlib.h>
+
+#include <PaVT/avl.h>
 
 namespace pavt {
 
