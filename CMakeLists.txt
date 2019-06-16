@@ -11,7 +11,7 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}/version.h.in"
   "${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}/version.h")
 
-
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 include(ConfigSafeGuards)
 include(Colors)
@@ -84,6 +84,7 @@ enable_testing()
 
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
-add_executable(run_tests ${TEST_FILES})
-target_link_libraries(run_tests gtest gmock gtest_main)
-target_link_libraries(run_tests pavt_lib)
+set(TEST_MAIN unit_tests.x)
+add_executable(${TEST_MAIN} ${TEST_FILES})
+target_link_libraries(${TEST_MAIN} gtest gmock gtest_main)
+target_link_libraries(${TEST_MAIN} pavt_lib)

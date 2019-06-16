@@ -145,4 +145,3 @@ else()
         COMMAND echo "${Green}Make a new build directory and rerun cmake with -DCMAKE_BUILD_TYPE=Coverage to enable this target.${ColorReset}" 
     )
 endif()
-
