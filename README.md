@@ -1,6 +1,6 @@
 # PaVT BST
 [![Build Status](https://travis-ci.org/tylertownsend/PaVT-BST.svg?branch=develop)](https://travis-ci.org/tylertownsend/PaVT-BST)
-[![Coverage Status](https://coveralls.io/repos/github/tylertownsend/PaVT-BST/badge.svg?branch=develop)](https://coveralls.io/github/tylertownsend/PaVT-BST?branch=develop)
+[![Coverage Status](https://coveralls.io/repos/github/tylertownsend/PaVT-BST/badge.svg?branch=master)](https://coveralls.io/github/tylertownsend/PaVT-BST?branch=master)
 ## Introduction
 **Pa**th **V**alidation in search **T**rees (PaVT) is a validation check that allows concurrent updates to *any* search-tree data structure by checking if a node being searched for has been relocated. The PaVT condition was proposed by Draschler-Cohen et al. in the paper *Practical Concurrent Traversals in Search Trees*[1]. This repo is a reimplimination of their work using the PaVT condidition on a Binary Search Tree data structure with and without an AVL balancing condition. 
 
