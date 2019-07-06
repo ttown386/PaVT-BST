@@ -34,6 +34,10 @@ script:
   - cmake -DCMAKE_BUILD_TYPE=Coverage $PARENTDIR
   - make
   - make coverage
+  - rm -rf *
+  - cmake ..
+  - make
+  - ./performance_benchmarks 100000
   - cd ..
 
 after_success:
