@@ -4,14 +4,14 @@ cmake_minimum_required(VERSION 3.1.3)
 # Version numbers are available by including "BingoCpp/version.h" in 
 # the source. See version.h.in for some more details.
 project(PaVT VERSION 0.1.1.0 LANGUAGES C CXX)
-
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++11 -pthread")
 
 # ---------- version ----------
 configure_file (
   "${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}/version.h.in"
   "${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}/version.h")
 
-
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 include(ConfigSafeGuards)
 include(Colors)
@@ -39,10 +39,17 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 # Make variables referring to all the sources and test files.
 file(GLOB SRC_FILES "src/*.c*")
 file(GLOB TEST_FILES "tests/*.cpp")
-
 list(REMOVE_ITEM TEST_FILES ${PROJECT_SOURCE_DIR}/tests/performance_tests.cpp)
 
 add_library(pavt_lib ${SRC_FILES})
+
+# ------------------------------------------------------------------------------
+#                        Performance Benchmarks 
+# ------------------------------------------------------------------------------
+find_package(Threads)
+add_executable(performance_benchmarks ${PROJECT_SOURCE_DIR}/tests/performance_tests.cpp)
+target_link_libraries(performance_benchmarks pavt_lib)
+target_link_libraries(performance_benchmarks ${CMAKE_THREAD_LIB_INIT})
 
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -64,11 +71,17 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/external/googletest/CMakeLists.txt")
 endif()
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/external/googletest)
-
 enable_testing()
-
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
-add_executable(run_tests ${TEST_FILES})
-target_link_libraries(run_tests gtest gtest_main)
-target_link_libraries(run_tests pavt_lib)
+set(TEST_MAIN unit_tests.x)
+add_executable(${TEST_MAIN} ${TEST_FILES})
+target_link_libraries(${TEST_MAIN} gtest gmock gtest_main)
+target_link_libraries(${TEST_MAIN} pavt_lib)
+
+# ------------------------------------------------------------------------------
+#                         Code Coverage
+# ------------------------------------------------------------------------------
+# If CMake aborts due to missing dependencies for code coverage 
+# (gcov, lcov, genhtml and supported compiler), comment this line.
+include(CodeCoverage)
