@@ -37,7 +37,7 @@ script:
   - rm -rf *
   - cmake ..
   - make
-  - ./performance_benchmarks 1000000
+  - ./performance_benchmarks 100000
   - cd ..
 
 after_success:
