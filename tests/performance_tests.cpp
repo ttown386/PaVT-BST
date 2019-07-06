@@ -2,7 +2,7 @@
 
 #include "performance_tests.h"
 
-const std::vector<int> numThreads = {1, 2, 4, 8};
+const std::vector<int> numThreads = {1, 2, 4, 8, 16, 32};
 const int insert_percent[] = {9, 20, 50};
 const int remove_percent[] = {1, 10, 50};
 const int contains_percent[] = {90, 70, 0};
@@ -30,7 +30,6 @@ int main(int argc, char **argv) {
   int total_ops = std::atoi(argv[1]);
   do_benchmarking(total_ops);
 }
-
 
 void do_benchmarking(int total_ops) {
   for (std::size_t structure_i = 0; structure_i < datastructure.size(); structure_i++) {
@@ -105,7 +104,7 @@ std::vector<double> run_benchmark(std::random_device& rd,
 
   int runs = 10;
   for (int run=0; run<runs; run++) {
-    BST *bst = init_BST(n_insert, struct_i, rd);
+    BST *bst = data_structure_map[struct_i](n_insert, rd);
     double run_time = measure_run(bst, n_threads, input_keys, op_list);
     run_data.push_back(run_time); 
     delete bst;
