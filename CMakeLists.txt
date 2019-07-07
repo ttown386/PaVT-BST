@@ -24,11 +24,10 @@ include(Colors)
 # If you do not use any features that limits the standard required,
 # you could omit this line.
 set(CMAKE_CXX_STANDARD 11)
-
-# Things to always include as flags. Change as needed.
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")  
 SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage") # enabling coverage
 
 # ------------------------------------------------------------------------------
 #                         Locate files (no change needed).
