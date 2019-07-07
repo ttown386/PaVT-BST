@@ -42,5 +42,5 @@ script:
 
 after_success:
   - cd $PARENTDIR/build
-  - lcov --list coverage_out.info.cleaned  # Show test report in travis log.
-  - coveralls-lcov coverage_out.info.cleaned  # uploads to coveralls
+  - lcov --list coverage_out.info # debug before upload
+  - coveralls-lcov --repo-token ${COVERALLS_TOKEN} coverage_out.info.cleaned # uploads to coveralls
