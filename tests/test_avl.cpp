@@ -40,7 +40,7 @@ class TestPaVTAVL : public testing::Test {
 
  private:
   AVL* init_balanced_avl() {
-    AVL* bst = new AVL(true);
+    AVL* bst = new AVL();
     insert_vector_into_tree(bst, dfs_balanced);
     return bst;
   }
@@ -83,7 +83,7 @@ TEST_F(TestPaVTAVL, AVLInsertLeftRightRot) {
   std::vector<int> avl_inorder(avl_preorder.begin(), avl_preorder.end());
   std::sort(avl_inorder.begin(), avl_inorder.end());
 
-  AVL* avl_tree = new AVL(true);
+  AVL* avl_tree = new AVL();
   for (std::size_t i=0; i<avl_data.size(); i++) {
     avl_tree->insert(avl_data[i]);
   }
@@ -103,7 +103,7 @@ TEST_F(TestPaVTAVL, AVLInsertRightLeftRot) {
   std::vector<int> avl_inorder(avl_preorder.begin(), avl_preorder.end());
   std::sort(avl_inorder.begin(), avl_inorder.end());
 
-  AVL* avl_tree = new AVL(true);
+  AVL* avl_tree = new AVL();
   for (auto key = avl_data.begin(); key != avl_data.end(); key++) {
     avl_tree->insert(*key);
   }

@@ -6,7 +6,7 @@
 
 
 #include "UtilitiesBST.h"
-#include "PaVT/Base/node.h"
+#include "PaVT/Base/locknode.h"
 #include "PaVT/bst.h"
 #include "PaVT/lock_manager.h"
 
@@ -20,20 +20,20 @@ class TestLockManager : public testing::Test {
   }
 
   virtual void TearDown() {
-    lock_manager.unlockAll();
+    lock_manager.UnlockAll();
   }
 };
 
 TEST_F(TestLockManager, LockingNode) {
-  pavt::base::Node* node1 = new pavt::base::Node();
-  pavt::base::Node* node2 = node1;
+  auto node1 = new pavt::base::LockNode();
+  auto node2 = node1;
 
   ASSERT_TRUE(node2->lock.try_lock());
   node2->lock.unlock();
 
-  lock_manager.lock(node1);
+  lock_manager.Lock(node1);
   ASSERT_FALSE(node2->lock.try_lock());
-  lock_manager.unlock();
+  lock_manager.Unlock();
 
   ASSERT_TRUE(node2->lock.try_lock());
   node2->lock.unlock();
@@ -42,21 +42,21 @@ TEST_F(TestLockManager, LockingNode) {
 }
 
 TEST_F(TestLockManager, UnlockAll) {
-  std::vector<pavt::base::Node* > test_nodes;
-  std::fill(test_nodes.begin(), test_nodes.end(), new pavt::base::Node());
+  std::vector< pavt::base::LockNode* > test_nodes;
+  std::fill(test_nodes.begin(), test_nodes.end(), new pavt::base::LockNode());
 
   for (auto node = test_nodes.begin(); node != test_nodes.end(); node++) {
-    lock_manager.lock(*node);
+    lock_manager.Lock(*node);
   }
 
-  pavt::base::Node* node;
+  pavt::base::LockNode* node;
   for (std::size_t i = 0; i < test_nodes.size(); i++) {
     node = test_nodes[i];
     ASSERT_FALSE(node->lock.try_lock());
   }
 
 
-  lock_manager.unlockAll();
+  lock_manager.UnlockAll();
   for (std::size_t i = 0; i < test_nodes.size(); i++) {
     node = test_nodes[i];
     ASSERT_TRUE(node->lock.try_lock());

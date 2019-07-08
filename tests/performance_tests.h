@@ -6,12 +6,15 @@
 #include <thread>
 #include <random>
 #include <sstream>
+#include <vector>
 #include <unordered_map>
 #include <chrono>
 
+#include <PaVT/Base/binary_tree.h>
 #include <PaVT/bst.h>
 
 using namespace pavt;
+using namespace base;
 
 typedef BST* (*data_structure_function)(const int&, std::random_device&);
 
@@ -57,7 +60,7 @@ void launch_threads(BST* bst, const int n_threads,
                     const std::vector<int> input_keys,
                     const std::vector<int> op_list);
 std::vector<int> init_random_list_of_ints(int num);
-std::vector<Node* > init_list(int num);
+std::vector<BinaryTree::Node* > init_list(int num);
 std::vector<int> init_ops(int add, int rem, int cont);
 void routine_4(BST &bst, int id, int n_threads, 
                std::vector<int> keys, std::vector<int> ops);
