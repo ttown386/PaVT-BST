@@ -7,6 +7,12 @@ namespace pavt {
 
 class AVL : public BST {
  public:
+  class Node : public BST::Node {
+   public:
+    int height;
+    Node(const int& key) : BST::Node(key) , height(0) {}
+    ~Node() {}
+  };
   using BST::BST;
   void insert(const int& key);
   void remove(const int& key);

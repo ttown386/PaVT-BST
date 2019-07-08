@@ -4,26 +4,25 @@
 #include <algorithm>
 #include <thread>
 
-#include <PaVT/Base/binary_search_tree.h>
+#include <PaVT/binary_search_tree.h>
 
 namespace pavt {
-namespace base {
 
 thread_local pavt::LockManager* BinarySearchTree::lock_manager = new pavt::LockManager();
 
-pavt::Node *BinarySearchTree::getRoot() {
+base::BinaryTree::Node* BinarySearchTree::getRoot() {
   return root;
 }
 
-pavt::Node *BinarySearchTree::getMinSentinel() {
+BinarySearchTree::Node* BinarySearchTree::getMinSentinel() {
   return minSentinel;
 }
 
-pavt::Node *BinarySearchTree::getMaxSentinel() {
+BinarySearchTree::Node* BinarySearchTree::getMaxSentinel() {
   return maxSentinel;
 }
 
-int BinarySearchTree::nextField(pavt::Node *node, int const &key) {
+int BinarySearchTree::nextField(BinaryTree::Node *node, int const &key) {
 
   // c1(node, key) = L
   if (key<node->getKey()) return LEFT;
@@ -45,13 +44,13 @@ int BinarySearchTree::nextField(pavt::Node *node, int const &key) {
  * @param  key key value to search for
  * @return      The last node in the traversal which is now locked.
  */
-pavt::Node *BinarySearchTree::traverse(pavt::Node *node, int const &key) {
+BinarySearchTree::Node *BinarySearchTree::traverse(Node *node, int const &key) {
   bool restart = false;
   while (true) {
 
-    pavt::Node *curr = node;
+    Node *curr = node;
     int field = nextField(curr, key);
-    pavt::Node *next = curr->get(field);
+    Node *next = (Node*) curr->get(field);
     while (next != nullptr) {
       curr = next;
 
@@ -69,7 +68,7 @@ pavt::Node *BinarySearchTree::traverse(pavt::Node *node, int const &key) {
         // Only executed if curr is not marked
         return curr;
       }
-      next = curr->get(field); 
+      next = (Node*)curr->get(field); 
     }
 
     if (restart == true) {
@@ -80,7 +79,7 @@ pavt::Node *BinarySearchTree::traverse(pavt::Node *node, int const &key) {
     // grab snapshot
     // check if restart is needed
     bool goLeft = (key < curr->getKey() ? true : false);
-    pavt::Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
+    Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
     if (curr->mark || 
           (goLeft && (key <= snapShot->getKey())) ||
       (!goLeft && (key >= snapShot->getKey()))) {
@@ -101,11 +100,11 @@ bool BinarySearchTree::contains(int const &key) {
   bool restart = false;
   while (true) {
 
-    pavt::Node *curr = root;
+    Node *curr = (Node*)root;
     int field = nextField(curr, key);
 
     // traverse
-    pavt::Node *next = curr->get(field);
+    Node *next = (Node*)curr->get(field);
     while (next != nullptr) {
 
       curr = next;
@@ -124,7 +123,7 @@ bool BinarySearchTree::contains(int const &key) {
         // Only executed if curr is not marked
         return true;
       }
-      next = curr->get(field); 
+      next = (Node*)curr->get(field); 
     }
 
     if (restart == true) {
@@ -134,7 +133,7 @@ bool BinarySearchTree::contains(int const &key) {
     // grab snapshot
     // check if restart is needed
     bool goLeft = (key < curr->getKey() ? true : false);
-    pavt::Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
+    Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
     if (curr->mark || 
       (goLeft && (key <= snapShot->getKey())) ||
       (!goLeft && (key >= snapShot->getKey()))) {
@@ -146,27 +145,27 @@ bool BinarySearchTree::contains(int const &key) {
 }
 
 void BinarySearchTree::lock(Node* node) {
-  BinarySearchTree::lock_manager->lock(node);
+  BinarySearchTree::lock_manager->Lock(node);
 }
 
 bool BinarySearchTree::tryLock(Node* node) {
-  return BinarySearchTree::lock_manager->tryLock(node);
+  return BinarySearchTree::lock_manager->TryLock(node);
 }
 
 void BinarySearchTree::unlock() {
-  BinarySearchTree::lock_manager->unlock();
+  BinarySearchTree::lock_manager->Unlock();
 }
 
 void BinarySearchTree::unlockAll() {
-  BinarySearchTree::lock_manager->unlockAll();
+  BinarySearchTree::lock_manager->UnlockAll();
 }
 
-pavt::Node* BinarySearchTree::insert(pavt::Node* node) {
+BinarySearchTree::Node* BinarySearchTree::insert(Node* node) {
 
   // Continue to attempt insertion
   while (true) {
     // traverse and lock node
-    pavt::Node *curr = traverse(root, node->getKey());
+    Node *curr = traverse((Node*)root, node->getKey());
   
     // We have a duplicate
     if (curr->getKey()== node->getKey()) {
@@ -176,18 +175,18 @@ pavt::Node* BinarySearchTree::insert(pavt::Node* node) {
     
     // No longer a leaf node
     if (
-        (node->getKey() > curr->getKey() && curr->getRight()!=nullptr) ||
-        (node->getKey() < curr->getKey() && curr->getLeft()!=nullptr)) {
+        (node->getKey() > curr->getKey() && curr->right!=nullptr) ||
+        (node->getKey() < curr->getKey() && curr->left!=nullptr)) {
       unlockAll();
       continue;
     }
     
     // Insert node and update parent
-    node->setParent(curr);
+    node->parent = (curr);
 
     // Copy snaps from parent
     bool parentIsLarger = node->getKey() < curr->getKey();
-    pavt::Node *snapshot = (parentIsLarger ? curr->leftSnap.load() : curr->rightSnap.load());
+    Node *snapshot = (parentIsLarger ? curr->leftSnap.load() : curr->rightSnap.load());
 
 
     // If parent is larger, set left pointer to new node
@@ -199,7 +198,7 @@ pavt::Node* BinarySearchTree::insert(pavt::Node* node) {
       snapshot->rightSnap = node;
       curr->leftSnap = node;
 
-      curr->setLeft(node);
+      curr->left = (node);
 
     // Otherwise set right pointer and update snaps
     } else {
@@ -209,7 +208,7 @@ pavt::Node* BinarySearchTree::insert(pavt::Node* node) {
       snapshot->leftSnap = node;
       curr->rightSnap = node;
 
-      curr->setRight(node);
+      curr->right = (node);
     }
 
     // Unlock
@@ -219,30 +218,30 @@ pavt::Node* BinarySearchTree::insert(pavt::Node* node) {
   }
 }
 
-std::pair<pavt::Node*, pavt::Node*>*
-BinarySearchTree::remove(pavt::Node* node, const int& key) {
+std::pair<BinarySearchTree::Node*, BinarySearchTree::Node*>*
+BinarySearchTree::remove(Node* node, const int& key) {
 
-  pavt::Node *maxSnapNode;
-  pavt::Node *minSnapNode;
+  Node *maxSnapNode;
+  Node *minSnapNode;
 
-  pavt::Node *toBalance1 = nullptr;
-  pavt::Node *toBalance2 = nullptr;
+  Node *toBalance1 = nullptr;
+  Node *toBalance2 = nullptr;
   
   // Continually attempt removal until call is returned
   while (true) {
 
     // Grab node
-    pavt::Node *curr = traverse(node, key);
+    Node *curr = traverse(node, key);
 
     // Already checked snapshots so return if current
     // node is not one to be deleted
     if (curr->getKey()!= key) {
       unlockAll();
-      return new std::pair<pavt::Node*, pavt::Node*>(nullptr, nullptr);
+      return new std::pair<Node*, Node*>(nullptr, nullptr);
     }
     
     // Lock Parent
-    pavt::Node *parent = curr->getParent();
+    Node *parent = (Node*)curr->parent;
     if (!tryLock(parent)) {
       unlockAll();
       continue;
@@ -250,16 +249,16 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
 
     // Some other thread has gone and changed things around
     // Got to check if we already got removed otherwise unlock restart
-    if (parent != curr->getParent()) {
+    if (parent != curr->parent) {
       unlockAll();
       if (curr->mark) {
-        return new std::pair<pavt::Node*, pavt::Node*>(nullptr, nullptr);
+        return new std::pair<Node*, Node*>(nullptr, nullptr);
       }
       continue;
     }
 
-    pavt::Node *leftChild = curr->getLeft();
-    pavt::Node *rightChild = curr->getRight();
+    Node *leftChild = (Node*)curr->left;
+    Node *rightChild = (Node*)curr->right;
     bool parentIsLarger = (parent->getKey() > key ? true : false);
     
     /*  A leaf node */
@@ -274,11 +273,11 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
 
       // Update pointers and snapshots
       if (parentIsLarger) {
-        parent->setLeft(nullptr);
+        parent->left = (nullptr);
         parent->leftSnap = minSnapNode;
         minSnapNode->rightSnap = parent;
       } else {
-        parent->setRight(nullptr);
+        parent->right = (nullptr);
         parent->rightSnap = maxSnapNode;
         maxSnapNode->leftSnap = parent;
       }
@@ -294,14 +293,14 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
     /* A node with at most 1 child */
 
       bool hasRightChild = leftChild == nullptr;
-      pavt::Node *currChild = (hasRightChild) ? rightChild : leftChild;
+      Node *currChild = (hasRightChild) ? rightChild : leftChild;
       lock(currChild);
 
       // Load snaps
       minSnapNode = curr->leftSnap.load();
       maxSnapNode = curr->rightSnap.load();
 
-      pavt::Node *snapshot =  (hasRightChild) ? maxSnapNode : minSnapNode;
+      Node *snapshot =  (hasRightChild) ? maxSnapNode : minSnapNode;
       
       
       // if the snapshot of curr is not its child then lock
@@ -321,13 +320,13 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
       // Logical removal
       curr->mark = true;
       currChild = (hasRightChild) ? rightChild : leftChild;
-      if (parent->getLeft()==curr) {
-        parent->setLeft(currChild);
+      if (parent->left==curr) {
+        parent->left = (currChild);
       } else {
-        parent->setRight(currChild);
+        parent->right = (currChild);
       }
 
-      currChild->setParent(parent);
+      currChild->parent = (parent);
 
       // Update Snaps
       minSnapNode->rightSnap = maxSnapNode;
@@ -356,19 +355,19 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
         continue;
       }
       /* Node with where the right child's left node is null */
-      if (rightChild->getLeft() == nullptr) {
+      if (rightChild->left == nullptr) {
 
         curr->mark = true;
 
         // Updated pointers
-        rightChild->setLeft(leftChild);
-        leftChild->setParent(rightChild);
-        rightChild->setParent(parent);
+        rightChild->left = (leftChild);
+        leftChild->parent = (rightChild);
+        rightChild->parent = (parent);
 
-        if (parent->getLeft()==curr) {
-          parent->setLeft(rightChild);
+        if (parent->left==curr) {
+          parent->left = (rightChild);
         } else {
-          parent->setRight(rightChild);
+          parent->right = (rightChild);
         }
 
         // Update snaps
@@ -381,14 +380,14 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
 
       } else {
         /* Hardest Case */
-        pavt::Node *succ = maxSnapNode;
-        pavt::Node *succParent = succ->getParent();
+        Node *succ = maxSnapNode;
+        Node *succParent = (Node*)succ->parent;
 
         // Successor's parent is no the right child
         if (succParent!=rightChild) {
           lock(succParent);
 
-          if (maxSnapNode->getParent() != succParent || maxSnapNode->mark) {
+          if (maxSnapNode->parent != succParent || maxSnapNode->mark) {
             unlockAll();
             continue;
           }
@@ -403,8 +402,8 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
 
         // Lock Right Child if successor has a right child
         // and rightSnap if it is not the right child
-        pavt::Node *succRightChild = succ->getRight();
-        pavt::Node *succRightSnapshot = succ->rightSnap.load();
+        Node *succRightChild = (Node*)succ->right;
+        Node *succRightSnapshot = succ->rightSnap.load();
 
         if (succRightChild!=nullptr)  {
           lock(succRightChild);
@@ -423,25 +422,25 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
         // Mark the node
         curr->mark = true;
 
-        succ->setRight(rightChild);
-        rightChild->setParent(succ);
+        succ->right = (rightChild);
+        rightChild->parent = (succ);
 
-        succ->setLeft(leftChild);
-        leftChild->setParent(succ);
+        succ->left = (leftChild);
+        leftChild->parent = (succ);
 
-        succ->setParent(parent);
+        succ->parent = (parent);
 
         
         if (parentIsLarger) {
-          parent->setLeft(succ);
+          parent->left = (succ);
         } else {
-          parent->setRight(succ);
+          parent->right = (succ);
         }
 
-        succParent->setLeft(succRightChild);
+        succParent->left = (succRightChild);
 
         if (succRightChild!=nullptr)
-          succRightChild->setParent(succParent);
+          succRightChild->parent = (succParent);
         
         // Update Snaps
         succ->rightSnap = succRightSnapshot;
@@ -457,7 +456,6 @@ BinarySearchTree::remove(pavt::Node* node, const int& key) {
       }
     }
   }
-  return new std::pair<pavt::Node*, pavt::Node*>(toBalance1, toBalance2);
+  return new std::pair<Node*, Node*>(toBalance1, toBalance2);
 }
-} // namespace base
 } // namespace pavt

@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <thread>
 
-#include <PaVT/Base/node.h>
 #include <PaVT/bst.h>
 
 namespace pavt {
@@ -33,7 +32,13 @@ void BST::insert(const int& key) {
  * @param key The key to be removed from the tree
  */
 void BST::remove(const int& key) {
-  auto balance_nodes = BinarySearchTree::remove(root, key);
+  auto balance_nodes = BinarySearchTree::remove((Node*)root, key);
   delete balance_nodes;
+}
+
+void BST::DeleteTree(Node* start) {
+  if (start->left != nullptr) DeleteTree((Node*) start->left);
+  if (start->right != nullptr) DeleteTree((Node*) start->right);
+  delete start;
 }
 } // namesapce pavt

@@ -1,4 +1,5 @@
 #include <PaVT/avl.h>
+#include <PaVT/Base/binary_tree.h>
 
 #include "performance_tests.h"
 
@@ -232,10 +233,10 @@ std::vector<int> init_random_list_of_ints(int num) {
 }
 
 
-std::vector<Node* > init_list(int num) {
-  std::vector<Node* > vector;
+std::vector<BinaryTree::Node* > init_list(int num) {
+  std::vector<BinaryTree::Node* > vector;
   for (int i=0; i<num; i++) {
-    Node* n = new Node(i);
+    BinaryTree::Node* n = new BinaryTree::Node(i);
     vector.push_back(n);
   }
   auto rng = std::default_random_engine {};

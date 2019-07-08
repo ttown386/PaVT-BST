@@ -3,7 +3,7 @@
 
 #include <stack>
 
-#include "PaVT/Base/node.h"
+#include "PaVT/Base/locknode.h"
 
 namespace pavt {
 
@@ -11,12 +11,12 @@ class LockManager {
  public:
   LockManager();
   ~LockManager();
-  void lock(base::Node* node);
-  bool tryLock(base::Node* node);
-  base::Node* unlock();
-  void unlockAll();
+  void Lock(base::LockNode* node);
+  bool TryLock(base::LockNode* node);
+  base::LockNode* Unlock();
+  void UnlockAll();
  protected:
-  std::stack<base::Node*> lock_stack;
+  std::stack<base::LockNode*> _lock_stack;
 };
 } // pavt
 #endif // PAVT_LOCK_MANGER_H_

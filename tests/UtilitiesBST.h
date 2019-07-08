@@ -7,14 +7,17 @@
 #include <queue>
 #include <iostream>
 
-#include "PaVT/bst.h"
+#include <PaVT/Base/binary_tree.h>
+#include <PaVT/bst.h>
 
 using namespace pavt;
+using namespace base;
+
 class NodeDepth {
  public:
-  Node * node;
+  BinaryTree::Node * node;
   int depth;
-  NodeDepth(Node *n, int d) {
+  NodeDepth(BinaryTree::Node *n, int d) {
     node=n;
     depth = d;
   }
@@ -22,21 +25,21 @@ class NodeDepth {
 
 inline 
 std::vector<int> inOrderTraversal(BST &bst) {
-  std::stack<Node*> stack;
+  std::stack<BinaryTree::Node*> stack;
 
   std::vector<int> return_vals;
-  Node *curr = bst.getRoot();
+  BinaryTree::Node *curr = bst.getRoot();
 
   while (!stack.empty() || curr!=nullptr) {
 
     if (curr!=nullptr) {
       stack.push(curr);
-      curr = curr->getLeft();
+      curr = curr->left;
     } else {
       curr = stack.top();
       stack.pop();
       return_vals.push_back(curr->getKey());
-      curr = curr->getRight();
+      curr = curr->right;
     }
   }
   return return_vals;
@@ -45,9 +48,9 @@ std::vector<int> inOrderTraversal(BST &bst) {
 inline 
 std::vector<int> preOrderTraversal(BST &bst) {
 
-  std::stack<Node*> stack;
+  std::stack<BinaryTree::Node*> stack;
   std::vector<int> return_vals;
-  Node *curr = bst.getRoot();
+  BinaryTree::Node *curr = bst.getRoot();
   stack.push(curr);
 
   while (!stack.empty()) {
@@ -56,11 +59,11 @@ std::vector<int> preOrderTraversal(BST &bst) {
     return_vals.push_back(curr->getKey());
     stack.pop();
 
-    if (curr->getRight()) {
-      stack.push(curr->getRight());
+    if (curr->right) {
+      stack.push(curr->right);
     }
-    if (curr->getLeft()) {
-      stack.push(curr->getLeft());
+    if (curr->left) {
+      stack.push(curr->left);
     }
   }
   return return_vals;
@@ -69,21 +72,21 @@ std::vector<int> preOrderTraversal(BST &bst) {
 inline
 void printInOrderTraversal(BST &bst) {
 
-  std::stack<Node*> stack;
+  std::stack<BinaryTree::Node*> stack;
 
   // TODO: bst should be a constant reference so as to not alter input
-  Node *curr = bst.getRoot();
+  BinaryTree::Node *curr = bst.getRoot();
 
   while (!stack.empty() || curr!=nullptr) {
 
     if (curr!=nullptr) {
       stack.push(curr);
-      curr = curr->getLeft();
+      curr = curr->left;
     } else {
       curr = stack.top();
       stack.pop();
       std::cout<<(curr->getKey())<<" ";
-      curr = curr->getRight();
+      curr = curr->right;
     }
   }
   std::cout<<std::endl;
@@ -92,9 +95,9 @@ void printInOrderTraversal(BST &bst) {
 inline
 void printPreOrderTraversal(BST &bst) {
 
-  std::stack<Node*> stack;
+  std::stack<BinaryTree::Node*> stack;
 
-  Node *curr = bst.getRoot();
+  BinaryTree::Node *curr = bst.getRoot();
   stack.push(curr);
 
   while (!stack.empty()) {
@@ -103,11 +106,11 @@ void printPreOrderTraversal(BST &bst) {
     std::cout<<(curr->getKey())<<" ";
     stack.pop();
 
-    if (curr->getRight()) {
-      stack.push(curr->getRight());
+    if (curr->right) {
+      stack.push(curr->right);
     }
-    if (curr->getLeft()) {
-      stack.push(curr->getLeft());
+    if (curr->left) {
+      stack.push(curr->left);
     }
   }
   std::cout<<std::endl;
@@ -115,11 +118,11 @@ void printPreOrderTraversal(BST &bst) {
 
 inline
 bool check (BST &bst) {
-  Node *curr = bst.getMinSentinel();
+  BinaryTree::Node *curr = bst.getMinSentinel();
   int currVal = curr->getKey();
-  Node *last = bst.getMaxSentinel();
+  BinaryTree::Node *last = bst.getMaxSentinel();
   while (curr!=last) {
-    curr = curr->rightSnap;
+    curr = ((BinarySearchTree::Node*)curr)->rightSnap;
     int nextVal = curr->getKey();
     if (nextVal <= currVal) return false;
     currVal = nextVal;
@@ -130,7 +133,7 @@ bool check (BST &bst) {
 inline
 void printTreeDepth(BST &bst) {
 
-  Node *start = bst.getRoot();
+  BinaryTree::Node *start = bst.getRoot();
   std::queue<NodeDepth *> q;
   q.push(new NodeDepth(start, 0));
 
@@ -138,7 +141,7 @@ void printTreeDepth(BST &bst) {
   while(!q.empty()) {
 
     NodeDepth *curr = q.front();
-    Node *currNode = curr->node;
+    BinaryTree::Node *currNode = curr->node;
     int currDepth = curr->depth;
     q.pop();
     delete curr;
@@ -153,8 +156,8 @@ void printTreeDepth(BST &bst) {
       std::cout<<"- ";
     }
     if (currNode!=nullptr) {
-      q.push(new NodeDepth(currNode->getLeft(), currDepth + 1));
-      q.push(new NodeDepth(currNode->getRight(), currDepth + 1));
+      q.push(new NodeDepth(currNode->left, currDepth + 1));
+      q.push(new NodeDepth(currNode->right, currDepth + 1));
     } 
   }
 }
