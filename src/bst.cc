@@ -7,8 +7,7 @@
 #include <algorithm>
 #include <thread>
 
-#include <PaVT/Base/node.h>
-#include <PaVT/bst.h>
+#include <PaVT/pavt/bst.h>
 
 namespace pavt {
 /**
@@ -18,9 +17,9 @@ namespace pavt {
  * 
  * @param key key to be inserted into tree
  */
-void BST::insert(const int& key) {
+void BST::Insert(const int& key) {
   Node* new_node = new Node(key);
-  Node* return_node = BinarySearchTree::insert(new_node);
+  Node* return_node = PaVTBST::Insert(new_node);
   if (return_node == nullptr) {
     delete new_node;
   } 
@@ -32,8 +31,19 @@ void BST::insert(const int& key) {
  * call returns. 
  * @param key The key to be removed from the tree
  */
-void BST::remove(const int& key) {
-  auto balance_nodes = BinarySearchTree::remove(root, key);
+void BST::Remove(const int& key) {
+  auto balance_nodes = PaVTBST::Remove((Node*)root, key);
   delete balance_nodes;
+}
+
+
+bool BST::Contains(const int& key) {
+  return PaVTBST::Contains((Node*) root, key);
+}
+
+void BST::DeleteTree(Node* start) {
+  if (start->left != nullptr) DeleteTree((Node*) start->left);
+  if (start->right != nullptr) DeleteTree((Node*) start->right);
+  delete start;
 }
 } // namesapce pavt

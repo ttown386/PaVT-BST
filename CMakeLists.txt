@@ -27,7 +27,6 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")  
 SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage") # enabling coverage
 
 # ------------------------------------------------------------------------------
 #                         Locate files (no change needed).
@@ -36,7 +35,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage") # enabling coverage
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Make variables referring to all the sources and test files.
-file(GLOB SRC_FILES "src/*.c*")
+file(GLOB SRC_FILES "src/*.c*" "src/sequential/*.c*")
 file(GLOB TEST_FILES "tests/*.cpp")
 list(REMOVE_ITEM TEST_FILES ${PROJECT_SOURCE_DIR}/tests/performance_tests.cpp)
 

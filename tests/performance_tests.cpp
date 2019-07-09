@@ -1,4 +1,5 @@
-#include <PaVT/avl.h>
+#include <PaVT/pavt/avl.h>
+#include <PaVT/Base/binary_tree.h>
 
 #include "performance_tests.h"
 
@@ -135,7 +136,7 @@ BST* init_BST(int numberOfNodes, bool AVL, std::random_device& rd) {
   std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
 
   for (std::size_t i=0; i<nodevals.size(); i++) {
-    bst->insert(nodevals.at(i));
+    bst->Insert(nodevals.at(i));
   }
 
   return bst;
@@ -161,7 +162,7 @@ BST* load_BST(const int& number_of_nodes, std::random_device& rd) {
   std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
 
   for (std::size_t i=0; i<nodevals.size(); i++) {
-    bst->insert(nodevals.at(i));
+    bst->Insert(nodevals.at(i));
   }
 
   return bst;
@@ -187,7 +188,7 @@ BST* load_AVL(const int& number_of_nodes, std::random_device& rd) {
   std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
 
   for (std::size_t i=0; i<nodevals.size(); i++) {
-    bst->insert(nodevals.at(i));
+    bst->Insert(nodevals.at(i));
   }
 
   return bst;
@@ -232,10 +233,10 @@ std::vector<int> init_random_list_of_ints(int num) {
 }
 
 
-std::vector<Node* > init_list(int num) {
-  std::vector<Node* > vector;
+std::vector<BinaryTree::Node* > init_list(int num) {
+  std::vector<BinaryTree::Node* > vector;
   for (int i=0; i<num; i++) {
-    Node* n = new Node(i);
+    BinaryTree::Node* n = new BinaryTree::Node(i);
     vector.push_back(n);
   }
   auto rng = std::default_random_engine {};
@@ -268,13 +269,13 @@ void routine_4(BST &bst, int id, int n_threads,
   int cont = id;
   for (std::size_t i=0; i<ops.size(); i++) {
     if (ops.at(i)==0) {
-      bst.insert(keys.at(add));
+      bst.Insert(keys.at(add));
       add+=n_threads;
     } else if (ops.at(i) == 1) {
-      bst.remove(keys.at(rem));
+      bst.Remove(keys.at(rem));
       rem+=n_threads;
     } else {
-      bst.contains(keys.at(cont));
+      bst.Contains(keys.at(cont));
       rem+=n_threads;
     }
   }
