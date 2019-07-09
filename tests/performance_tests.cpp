@@ -136,7 +136,7 @@ BST* init_BST(int numberOfNodes, bool AVL, std::random_device& rd) {
   std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
 
   for (std::size_t i=0; i<nodevals.size(); i++) {
-    bst->insert(nodevals.at(i));
+    bst->Insert(nodevals.at(i));
   }
 
   return bst;
@@ -162,7 +162,7 @@ BST* load_BST(const int& number_of_nodes, std::random_device& rd) {
   std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
 
   for (std::size_t i=0; i<nodevals.size(); i++) {
-    bst->insert(nodevals.at(i));
+    bst->Insert(nodevals.at(i));
   }
 
   return bst;
@@ -188,7 +188,7 @@ BST* load_AVL(const int& number_of_nodes, std::random_device& rd) {
   std::shuffle(std::begin(nodevals), std::end(nodevals), rng);
 
   for (std::size_t i=0; i<nodevals.size(); i++) {
-    bst->insert(nodevals.at(i));
+    bst->Insert(nodevals.at(i));
   }
 
   return bst;
@@ -269,13 +269,13 @@ void routine_4(BST &bst, int id, int n_threads,
   int cont = id;
   for (std::size_t i=0; i<ops.size(); i++) {
     if (ops.at(i)==0) {
-      bst.insert(keys.at(add));
+      bst.Insert(keys.at(add));
       add+=n_threads;
     } else if (ops.at(i) == 1) {
-      bst.remove(keys.at(rem));
+      bst.Remove(keys.at(rem));
       rem+=n_threads;
     } else {
-      bst.contains(keys.at(cont));
+      bst.Contains(keys.at(cont));
       rem+=n_threads;
     }
   }

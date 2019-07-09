@@ -23,9 +23,9 @@ class BinarySearchTree : public base::BinaryTree {
     ~Node() {}
   };
   static thread_local pavt::LockManager* lock_manager;
-  virtual void insert(const int& key) = 0;
-  virtual void remove(const int& key) = 0;
-  bool contains(const int& key);
+  virtual void Insert(const int& key) = 0;
+  virtual void Remove(const int& key) = 0;
+  virtual bool Contains(const int& key) = 0;
   BinaryTree::Node *getRoot();
   Node *getMinSentinel();
   Node *getMaxSentinel();
@@ -33,10 +33,11 @@ class BinarySearchTree : public base::BinaryTree {
  protected:
   Node* maxSentinel;
   Node* minSentinel;
-  Node* insert(Node* new_node);
-  std::pair<Node*, Node*>* remove(Node* node, const int& key);
-  int nextField(BinaryTree::Node *node, const int &key);
-  Node* traverse(Node *node, const int &key);
+  Node* Insert(Node* new_node);
+  std::pair<Node*, Node*>* Remove(Node* node, const int& key);
+  bool Contains(Node* start_node, const int& key);
+  int NextField(BinaryTree::Node *node, const int &key);
+  Node* Traverse(Node *node, const int &key);
   void lock(Node* node);
   bool tryLock(Node* node);
   void unlock();

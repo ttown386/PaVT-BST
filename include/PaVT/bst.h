@@ -30,8 +30,9 @@ class BST: public BinarySearchTree {
   }
 
   inline ~BST() { DeleteTree((Node*) root); }
-  void insert(const int& key);
-  void remove(const int& key);
+  void Insert(const int& key);
+  void Remove(const int& key);
+  bool Contains(const int& key);
  private:
   void DeleteTree(Node* start);
 };

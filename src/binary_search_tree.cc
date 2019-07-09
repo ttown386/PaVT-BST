@@ -22,7 +22,7 @@ BinarySearchTree::Node* BinarySearchTree::getMaxSentinel() {
   return maxSentinel;
 }
 
-int BinarySearchTree::nextField(BinaryTree::Node *node, int const &key) {
+int BinarySearchTree::NextField(BinaryTree::Node *node, int const &key) {
 
   // c1(node, key) = L
   if (key<node->getKey()) return LEFT;
@@ -35,7 +35,7 @@ int BinarySearchTree::nextField(BinaryTree::Node *node, int const &key) {
 }
 
 /**
- * Traverse to node and lock it. If tree contains node, we attempt to
+ * Traverse to node and lock it. If tree Contains node, we attempt to
  * lock the node. Check if marked. If not, the last node is the one to be 
  * inserted. Check if the key(key) is in the snapshos of the node. If not
  * restart the traversal.
@@ -44,17 +44,17 @@ int BinarySearchTree::nextField(BinaryTree::Node *node, int const &key) {
  * @param  key key value to search for
  * @return      The last node in the traversal which is now locked.
  */
-BinarySearchTree::Node *BinarySearchTree::traverse(Node *node, int const &key) {
+BinarySearchTree::Node *BinarySearchTree::Traverse(Node *node, int const &key) {
   bool restart = false;
   while (true) {
 
     Node *curr = node;
-    int field = nextField(curr, key);
+    int field = NextField(curr, key);
     Node *next = (Node*) curr->get(field);
     while (next != nullptr) {
       curr = next;
 
-      field = nextField(curr, key);
+      field = NextField(curr, key);
       // We have found node
       if (field == HERE) {
         lock(curr);
@@ -92,16 +92,16 @@ BinarySearchTree::Node *BinarySearchTree::traverse(Node *node, int const &key) {
 }
 
 /**
- * PaVTBST::contains Returns true if tree contains node and false otherwise
+ * PaVTBST::Contains Returns true if tree Contains node and false otherwise
  * @param  key key to search for
  * @return      A boolean value
  */
-bool BinarySearchTree::contains(int const &key) {
+bool BinarySearchTree::Contains(Node* start_node, const int& key) {
   bool restart = false;
   while (true) {
 
     Node *curr = (Node*)root;
-    int field = nextField(curr, key);
+    int field = NextField(curr, key);
 
     // traverse
     Node *next = (Node*)curr->get(field);
@@ -109,7 +109,7 @@ bool BinarySearchTree::contains(int const &key) {
 
       curr = next;
 
-      field = nextField(curr, key);
+      field = NextField(curr, key);
 
       // We have found node
       if (field == HERE) {
@@ -160,12 +160,12 @@ void BinarySearchTree::unlockAll() {
   BinarySearchTree::lock_manager->UnlockAll();
 }
 
-BinarySearchTree::Node* BinarySearchTree::insert(Node* node) {
+BinarySearchTree::Node* BinarySearchTree::Insert(Node* node) {
 
   // Continue to attempt insertion
   while (true) {
     // traverse and lock node
-    Node *curr = traverse((Node*)root, node->getKey());
+    Node *curr = Traverse((Node*)root, node->getKey());
   
     // We have a duplicate
     if (curr->getKey()== node->getKey()) {
@@ -219,7 +219,7 @@ BinarySearchTree::Node* BinarySearchTree::insert(Node* node) {
 }
 
 std::pair<BinarySearchTree::Node*, BinarySearchTree::Node*>*
-BinarySearchTree::remove(Node* node, const int& key) {
+BinarySearchTree::Remove(Node* node, const int& key) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
@@ -231,7 +231,7 @@ BinarySearchTree::remove(Node* node, const int& key) {
   while (true) {
 
     // Grab node
-    Node *curr = traverse(node, key);
+    Node *curr = Traverse(node, key);
 
     // Already checked snapshots so return if current
     // node is not one to be deleted

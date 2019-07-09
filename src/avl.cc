@@ -5,27 +5,31 @@
 
 namespace pavt {
 
-void AVL::insert(const int& key) {
+void AVL::Insert(const int& key) {
   Node* new_node = new Node(key);
-  auto return_node = (Node*)BinarySearchTree::insert(new_node);
+  auto return_node = (Node*)BinarySearchTree::Insert(new_node);
   if (return_node == nullptr) {
     delete new_node;
   } else {
-    rebalance(return_node);
+    Rebalance(return_node);
   }
 }
 
-void AVL::remove(const int& key) {
-  auto balance_nodes = BinarySearchTree::remove((Node*)root, key);
+void AVL::Remove(const int& key) {
+  auto balance_nodes = BinarySearchTree::Remove((Node*)root, key);
   if (balance_nodes->first != nullptr) {
-    rebalance((Node*)balance_nodes->first);
-    if (balance_nodes->second != nullptr) rebalance((Node*)balance_nodes->second);
+    Rebalance((Node*)balance_nodes->first);
+    if (balance_nodes->second != nullptr) Rebalance((Node*)balance_nodes->second);
   } 
   delete balance_nodes;
 }
 
+bool AVL::Contains(const int& key) {
+  return BinarySearchTree::Contains((Node*)root, key);
+}
+
 // Rotates node to the left. Child becomes nodes parent.
-void AVL::rotateLeft(Node *child, Node *node, Node *parent) {
+void AVL::RotateLeft(Node *child, Node *node, Node *parent) {
 
   // Grab the nodes right child
   Node *newRoot = child;
@@ -54,17 +58,17 @@ void AVL::rotateLeft(Node *child, Node *node, Node *parent) {
   node->parent = (newRoot);
 
   // Update the tree heights
-  int leftHeight = height((Node*)node->left);
-  int rightHeight = height((Node*)node->right);
+  int leftHeight = Height((Node*)node->left);
+  int rightHeight = Height((Node*)node->right);
   node->height = (1 + std::max(leftHeight, rightHeight));
 
-  int newRootLeftHeight = height((Node*)newRoot->left);
-  int newRootRightHeight = height((Node*)newRoot->right);
+  int newRootLeftHeight = Height((Node*)newRoot->left);
+  int newRootRightHeight = Height((Node*)newRoot->right);
   newRoot->height = (1 + std::max(newRootLeftHeight, newRootRightHeight));
 }
 
 //Rotates node to the right. Child becomes nodes parent
-void AVL::rotateRight(Node *child, Node *node, Node *parent) {
+void AVL::RotateRight(Node *child, Node *node, Node *parent) {
 
   // Grab the nodes left child
   Node* newRoot = child;
@@ -92,19 +96,19 @@ void AVL::rotateRight(Node *child, Node *node, Node *parent) {
   node->parent = (newRoot);
 
   // Update the tree heights
-  int leftHeight = height((Node*)node->left);
-  int rightHeight = height((Node*)node->right);
+  int leftHeight = Height((Node*)node->left);
+  int rightHeight = Height((Node*)node->right);
   node->height = (1 + std::max(leftHeight, rightHeight));
 
-  int newRootLeftHeight = height((Node*)newRoot->left);
-  int newRootRightHeight = height((Node*)newRoot->right);
+  int newRootLeftHeight = Height((Node*)newRoot->left);
+  int newRootRightHeight = Height((Node*)newRoot->right);
   newRoot->height = (1 + std::max(newRootLeftHeight, newRootRightHeight));
 }
 
 /*
  * Returns the height of node
  */
-int AVL::height(Node *node) {
+int AVL::Height(Node *node) {
   return (node == nullptr) ? -1 : node->height;
 }
 
@@ -114,7 +118,7 @@ int AVL::height(Node *node) {
  *
  * @param node
  */
-void AVL::rebalance(Node *node) {
+void AVL::Rebalance(Node *node) {
 
   if (node==root) {
     return;
@@ -147,8 +151,8 @@ void AVL::rebalance(Node *node) {
     Node *left = (Node*)node->left;
     Node *right= (Node*)node->right;
 
-    int leftHeight = height(left);
-    int rightHeight = height(right);
+    int leftHeight = Height(left);
+    int rightHeight = Height(right);
 
     int currHeight = std::max(leftHeight, rightHeight) + 1;
     int prevHeight = node->height;
@@ -171,8 +175,8 @@ void AVL::rebalance(Node *node) {
       Node *childLeft = (Node*)child->left;
       Node *childRight = (Node*)child->right;
 
-      int childLeftHeight = height(childLeft);
-      int childRightHeight = height(childRight);
+      int childLeftHeight = Height(childLeft);
+      int childRightHeight = Height(childRight);
 
       int childBf = childLeftHeight - childRightHeight;
 
@@ -181,8 +185,8 @@ void AVL::rebalance(Node *node) {
       // Need to do double rotation
       if (childBf > 0) {
         grandChild->lock.lock();
-        rotateRight(grandChild, child, node);
-        rotateLeft(grandChild, node, parent);
+        RotateRight(grandChild, child, node);
+        RotateLeft(grandChild, node, parent);
         child->lock.unlock();
         node->lock.unlock();
         grandChild->lock.unlock();
@@ -191,7 +195,7 @@ void AVL::rebalance(Node *node) {
         node = grandChild;
 
       } else {
-        rotateLeft(child, node, parent);
+        RotateLeft(child, node, parent);
         node->lock.unlock();
         child->lock.unlock();
         parent->lock.unlock();
@@ -207,8 +211,8 @@ void AVL::rebalance(Node *node) {
       Node *childLeft = (Node*)child->left;
       Node *childRight = (Node*)child->right;
 
-      int childLeftHeight = height(childLeft);
-      int childRightHeight = height(childRight);
+      int childLeftHeight = Height(childLeft);
+      int childRightHeight = Height(childRight);
 
       int childBf = childLeftHeight - childRightHeight;
 
@@ -217,8 +221,8 @@ void AVL::rebalance(Node *node) {
       if (childBf < 0) {
         grandChild->lock.lock();
 
-        rotateLeft(grandChild, child, node);
-        rotateRight(grandChild, node, parent);
+        RotateLeft(grandChild, child, node);
+        RotateRight(grandChild, node, parent);
         node->lock.unlock();
         child->lock.unlock();
         grandChild->lock.unlock();
@@ -227,7 +231,7 @@ void AVL::rebalance(Node *node) {
         node = grandChild;
       } else {
 
-        rotateRight(child, node, parent);
+        RotateRight(child, node, parent);
 
         node->lock.unlock();
         child->lock.unlock();

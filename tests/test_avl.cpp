@@ -34,7 +34,7 @@ class TestPaVTAVL : public testing::Test {
   void insert_vector_into_tree(AVL* tree, 
                                const std::vector<int>& node_list) {
     for (std::size_t i=0; i < node_list.size(); i++) {
-      tree->insert(node_list[i]);
+      tree->Insert(node_list[i]);
     }
   }
 
@@ -57,7 +57,7 @@ TEST_F(TestPaVTAVL, InsertSingleRightRotation) {
   int new_val = 14;
   const std::vector<int> new_preorder = {max_val, 10, 4, new_val};
   const std::vector<int> new_inorder = {4, 10, new_val, max_val}; 
-  small_avl->insert(new_val);
+  small_avl->Insert(new_val);
   std::vector<int> inorder = inOrderTraversal(*small_avl);
   std::vector<int> preorder = preOrderTraversal(*small_avl);
   EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));
@@ -85,7 +85,7 @@ TEST_F(TestPaVTAVL, AVLInsertLeftRightRot) {
 
   AVL* avl_tree = new AVL();
   for (std::size_t i=0; i<avl_data.size(); i++) {
-    avl_tree->insert(avl_data[i]);
+    avl_tree->Insert(avl_data[i]);
   }
   std::vector<int> inorder = inOrderTraversal(*avl_tree);
   std::vector<int> preorder = preOrderTraversal(*avl_tree);
@@ -105,7 +105,7 @@ TEST_F(TestPaVTAVL, AVLInsertRightLeftRot) {
 
   AVL* avl_tree = new AVL();
   for (auto key = avl_data.begin(); key != avl_data.end(); key++) {
-    avl_tree->insert(*key);
+    avl_tree->Insert(*key);
   }
   std::vector<int> inorder = inOrderTraversal(*avl_tree);
   std::vector<int> preorder = preOrderTraversal(*avl_tree);
@@ -123,10 +123,10 @@ TEST_F(TestPaVTAVL, AVLDeleteLogNRotations) {
 
   for (auto key=keys_to_minimal_avl.begin();
       key!=keys_to_minimal_avl.end(); key++) {
-    avl->insert(*key);
+    avl->Insert(*key);
   }
 
-  avl->remove(40);
+  avl->Remove(40);
 
   std::vector<int> avl_preorder = {
     max_val, 45, 20, 10, 5, 15, 30, 25, 35, 37, 60,
