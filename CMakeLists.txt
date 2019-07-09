@@ -35,7 +35,7 @@ SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Make variables referring to all the sources and test files.
-file(GLOB SRC_FILES "src/*.c*")
+file(GLOB SRC_FILES "src/*.c*" "src/sequential/*.c*")
 file(GLOB TEST_FILES "tests/*.cpp")
 list(REMOVE_ITEM TEST_FILES ${PROJECT_SOURCE_DIR}/tests/performance_tests.cpp)
 

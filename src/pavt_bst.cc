@@ -4,25 +4,29 @@
 #include <algorithm>
 #include <thread>
 
-#include <PaVT/binary_search_tree.h>
+#include <PaVT/pavt/pavt_bst.h>
 
 namespace pavt {
 
-thread_local pavt::LockManager* BinarySearchTree::lock_manager = new pavt::LockManager();
-
-base::BinaryTree::Node* BinarySearchTree::getRoot() {
-  return root;
+void Lock(PaVTBST::Node* node, pavt::LockManager* manager) {
+  PaVTBST::lock_manager->Lock(node);
 }
 
-BinarySearchTree::Node* BinarySearchTree::getMinSentinel() {
-  return minSentinel;
+bool TryLock(PaVTBST::Node* node, pavt::LockManager* manager) {
+  return PaVTBST::lock_manager->TryLock(node);
 }
 
-BinarySearchTree::Node* BinarySearchTree::getMaxSentinel() {
-  return maxSentinel;
+void Unlock(pavt::LockManager* manager) {
+  PaVTBST::lock_manager->Unlock();
 }
 
-int BinarySearchTree::nextField(BinaryTree::Node *node, int const &key) {
+void UnlockAll(pavt::LockManager* manager) {
+  PaVTBST::lock_manager->UnlockAll();
+}
+
+thread_local pavt::LockManager* PaVTBST::lock_manager = new pavt::LockManager();
+
+int PaVTBST::NextField(BinaryTree::Node *node, int const &key) {
 
   // c1(node, key) = L
   if (key<node->getKey()) return LEFT;
@@ -35,7 +39,7 @@ int BinarySearchTree::nextField(BinaryTree::Node *node, int const &key) {
 }
 
 /**
- * Traverse to node and lock it. If tree contains node, we attempt to
+ * Traverse to node and lock it. If tree Contains node, we attempt to
  * lock the node. Check if marked. If not, the last node is the one to be 
  * inserted. Check if the key(key) is in the snapshos of the node. If not
  * restart the traversal.
@@ -44,23 +48,23 @@ int BinarySearchTree::nextField(BinaryTree::Node *node, int const &key) {
  * @param  key key value to search for
  * @return      The last node in the traversal which is now locked.
  */
-BinarySearchTree::Node *BinarySearchTree::traverse(Node *node, int const &key) {
+PaVTBST::Node *PaVTBST::Traverse(Node *node, int const &key) {
   bool restart = false;
   while (true) {
 
     Node *curr = node;
-    int field = nextField(curr, key);
+    int field = NextField(curr, key);
     Node *next = (Node*) curr->get(field);
     while (next != nullptr) {
       curr = next;
 
-      field = nextField(curr, key);
+      field = NextField(curr, key);
       // We have found node
       if (field == HERE) {
-        lock(curr);
+        Lock(curr, lock_manager);
         // If marked then break from first while loop and restart
-        if (curr->mark) {
-          unlock();
+        if (curr->IsMarked()) {
+          Unlock(lock_manager);
           restart = true;
           break;
         }
@@ -75,15 +79,15 @@ BinarySearchTree::Node *BinarySearchTree::traverse(Node *node, int const &key) {
       restart = false;
       continue;
     }
-    lock(curr);
+    Lock(curr, lock_manager);
     // grab snapshot
     // check if restart is needed
     bool goLeft = (key < curr->getKey() ? true : false);
     Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
-    if (curr->mark || 
-          (goLeft && (key <= snapShot->getKey())) ||
-      (!goLeft && (key >= snapShot->getKey()))) {
-      unlock();
+    if (curr->IsMarked() || 
+        (goLeft && (key <= snapShot->getKey())) ||
+        (!goLeft && (key >= snapShot->getKey()))) {
+      Unlock(lock_manager);
       continue;
     }
 
@@ -92,16 +96,16 @@ BinarySearchTree::Node *BinarySearchTree::traverse(Node *node, int const &key) {
 }
 
 /**
- * PaVTBST::contains Returns true if tree contains node and false otherwise
+ * PaVTBST::Contains Returns true if tree Contains node and false otherwise
  * @param  key key to search for
  * @return      A boolean value
  */
-bool BinarySearchTree::contains(int const &key) {
+bool PaVTBST::Contains(Node* start_node, const int& key) {
   bool restart = false;
   while (true) {
 
     Node *curr = (Node*)root;
-    int field = nextField(curr, key);
+    int field = NextField(curr, key);
 
     // traverse
     Node *next = (Node*)curr->get(field);
@@ -109,13 +113,13 @@ bool BinarySearchTree::contains(int const &key) {
 
       curr = next;
 
-      field = nextField(curr, key);
+      field = NextField(curr, key);
 
       // We have found node
       if (field == HERE) {
 
         // If marked then break from first while loop and restart
-        if (curr->mark) {
+        if (curr->IsMarked()) {
           restart = true;
           break;
         }
@@ -134,9 +138,9 @@ bool BinarySearchTree::contains(int const &key) {
     // check if restart is needed
     bool goLeft = (key < curr->getKey() ? true : false);
     Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
-    if (curr->mark || 
-      (goLeft && (key <= snapShot->getKey())) ||
-      (!goLeft && (key >= snapShot->getKey()))) {
+    if (curr->IsMarked() || 
+        (goLeft && (key <= snapShot->getKey())) ||
+        (!goLeft && (key >= snapShot->getKey()))) {
       continue;
     }
 
@@ -144,32 +148,17 @@ bool BinarySearchTree::contains(int const &key) {
   }
 }
 
-void BinarySearchTree::lock(Node* node) {
-  BinarySearchTree::lock_manager->Lock(node);
-}
 
-bool BinarySearchTree::tryLock(Node* node) {
-  return BinarySearchTree::lock_manager->TryLock(node);
-}
-
-void BinarySearchTree::unlock() {
-  BinarySearchTree::lock_manager->Unlock();
-}
-
-void BinarySearchTree::unlockAll() {
-  BinarySearchTree::lock_manager->UnlockAll();
-}
-
-BinarySearchTree::Node* BinarySearchTree::insert(Node* node) {
+PaVTBST::Node* PaVTBST::Insert(Node* node) {
 
   // Continue to attempt insertion
   while (true) {
     // traverse and lock node
-    Node *curr = traverse((Node*)root, node->getKey());
+    Node *curr = Traverse((Node*)root, node->getKey());
   
     // We have a duplicate
     if (curr->getKey()== node->getKey()) {
-      unlockAll();
+      UnlockAll(lock_manager);
       return nullptr;
     }
     
@@ -177,7 +166,7 @@ BinarySearchTree::Node* BinarySearchTree::insert(Node* node) {
     if (
         (node->getKey() > curr->getKey() && curr->right!=nullptr) ||
         (node->getKey() < curr->getKey() && curr->left!=nullptr)) {
-      unlockAll();
+      UnlockAll(lock_manager);
       continue;
     }
     
@@ -212,14 +201,14 @@ BinarySearchTree::Node* BinarySearchTree::insert(Node* node) {
     }
 
     // Unlock
-    unlockAll();
+    UnlockAll(lock_manager);
 
     return curr;
   }
 }
 
-std::pair<BinarySearchTree::Node*, BinarySearchTree::Node*>*
-BinarySearchTree::remove(Node* node, const int& key) {
+std::pair<PaVTBST::Node*, PaVTBST::Node*>*
+PaVTBST::Remove(Node* node, const int& key) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
@@ -231,27 +220,27 @@ BinarySearchTree::remove(Node* node, const int& key) {
   while (true) {
 
     // Grab node
-    Node *curr = traverse(node, key);
+    Node *curr = Traverse(node, key);
 
     // Already checked snapshots so return if current
     // node is not one to be deleted
     if (curr->getKey()!= key) {
-      unlockAll();
+      UnlockAll(lock_manager);
       return new std::pair<Node*, Node*>(nullptr, nullptr);
     }
     
     // Lock Parent
     Node *parent = (Node*)curr->parent;
-    if (!tryLock(parent)) {
-      unlockAll();
+    if (!TryLock(parent, lock_manager)) {
+      UnlockAll(lock_manager);
       continue;
     }
 
     // Some other thread has gone and changed things around
     // Got to check if we already got removed otherwise unlock restart
     if (parent != curr->parent) {
-      unlockAll();
-      if (curr->mark) {
+      UnlockAll(lock_manager);
+      if (curr->IsMarked()) {
         return new std::pair<Node*, Node*>(nullptr, nullptr);
       }
       continue;
@@ -269,7 +258,7 @@ BinarySearchTree::remove(Node* node, const int& key) {
       minSnapNode = curr->leftSnap.load();
 
       // Logical Removal
-      curr->mark = true;
+      curr->Mark();
 
       // Update pointers and snapshots
       if (parentIsLarger) {
@@ -283,7 +272,7 @@ BinarySearchTree::remove(Node* node, const int& key) {
       }
 
       // Unlock all
-      unlockAll();
+      UnlockAll(lock_manager);
       toBalance1 = parent;
 
     } else if (leftChild==nullptr || rightChild==nullptr) {
@@ -294,7 +283,7 @@ BinarySearchTree::remove(Node* node, const int& key) {
 
       bool hasRightChild = leftChild == nullptr;
       Node *currChild = (hasRightChild) ? rightChild : leftChild;
-      lock(currChild);
+      Lock(currChild, lock_manager);
 
       // Load snaps
       minSnapNode = curr->leftSnap.load();
@@ -306,19 +295,19 @@ BinarySearchTree::remove(Node* node, const int& key) {
       // if the snapshot of curr is not its child then lock
       // that node as its path can be altered
       if (snapshot!=currChild) {
-        lock(snapshot);
+        Lock(snapshot, lock_manager);
       }
 
       // if the snapshot has changed unlock all and restart
       if ((hasRightChild && snapshot->leftSnap.load()!=curr) || 
           (!hasRightChild && snapshot->rightSnap.load()!=curr) ||
-          snapshot->mark) {
-        unlockAll();
+          snapshot->IsMarked()) {
+        UnlockAll(lock_manager);
         continue;
       }
 
       // Logical removal
-      curr->mark = true;
+      curr->Mark();
       currChild = (hasRightChild) ? rightChild : leftChild;
       if (parent->left==curr) {
         parent->left = (currChild);
@@ -332,11 +321,11 @@ BinarySearchTree::remove(Node* node, const int& key) {
       minSnapNode->rightSnap = maxSnapNode;
       maxSnapNode->leftSnap = minSnapNode;
 
-      unlockAll();
+      UnlockAll(lock_manager);
       toBalance1 = parent;
     } else {
-      lock(leftChild);
-      lock(rightChild);
+      Lock(leftChild, lock_manager);
+      Lock(rightChild, lock_manager);
 
       /* Hard Cases */
       minSnapNode = curr->leftSnap.load();
@@ -345,19 +334,19 @@ BinarySearchTree::remove(Node* node, const int& key) {
       
       // Lock if leftSnap is not the leftChild
       if (minSnapNode != leftChild) {
-        lock(minSnapNode);
+        Lock(minSnapNode, lock_manager);
       } 
 
       // Check if the LeftSnapshot's right snapshot is the node
       // to be removed
-      if (minSnapNode->rightSnap!=curr || minSnapNode->mark) {
-        unlockAll();
+      if (minSnapNode->rightSnap!=curr || minSnapNode->IsMarked()) {
+        UnlockAll(lock_manager);
         continue;
       }
       /* Node with where the right child's left node is null */
       if (rightChild->left == nullptr) {
 
-        curr->mark = true;
+        curr->Mark();
 
         // Updated pointers
         rightChild->left = (leftChild);
@@ -375,7 +364,7 @@ BinarySearchTree::remove(Node* node, const int& key) {
         maxSnapNode->leftSnap = minSnapNode;
 
         // Unlock all
-        unlockAll();
+        UnlockAll(lock_manager);
         toBalance1 = rightChild; 
 
       } else {
@@ -385,18 +374,18 @@ BinarySearchTree::remove(Node* node, const int& key) {
 
         // Successor's parent is no the right child
         if (succParent!=rightChild) {
-          lock(succParent);
+          Lock(succParent, lock_manager);
 
-          if (maxSnapNode->parent != succParent || maxSnapNode->mark) {
-            unlockAll();
+          if (maxSnapNode->parent != succParent || maxSnapNode->IsMarked()) {
+            UnlockAll(lock_manager);
             continue;
           }
         }
 
         // Lock successor
-        lock(succ);
-        if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->mark) {
-          unlockAll();
+        Lock(succ, lock_manager);
+        if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->IsMarked()) {
+          UnlockAll(lock_manager);
           continue;
         }
 
@@ -406,21 +395,21 @@ BinarySearchTree::remove(Node* node, const int& key) {
         Node *succRightSnapshot = succ->rightSnap.load();
 
         if (succRightChild!=nullptr)  {
-          lock(succRightChild);
+          Lock(succRightChild, lock_manager);
           succRightSnapshot = succ->rightSnap.load();
 
           if (succRightSnapshot!=succRightChild) {
-            lock(succRightSnapshot);
+            Lock(succRightSnapshot, lock_manager);
           }
           // Check if it's left snap is still the successor
-          if (succRightSnapshot->leftSnap.load()!=succ||succRightSnapshot->mark) {
-            unlockAll();
+          if (succRightSnapshot->leftSnap.load()!=succ||succRightSnapshot->IsMarked()) {
+            UnlockAll(lock_manager);
             continue;
           }
         }
 
         // Mark the node
-        curr->mark = true;
+        curr->Mark();
 
         succ->right = (rightChild);
         rightChild->parent = (succ);
@@ -450,12 +439,25 @@ BinarySearchTree::remove(Node* node, const int& key) {
         minSnapNode->rightSnap = succ;
 
         // Unlock All
-        unlockAll();
+        UnlockAll(lock_manager);
         toBalance1 = succ;
         toBalance2 = succParent;
       }
     }
   }
   return new std::pair<Node*, Node*>(toBalance1, toBalance2);
+}
+
+bool ValidatePaVTBST (PaVTBST& bst) {
+  auto curr = bst.minSentinel;
+  int currVal = curr->getKey();
+  auto last = bst.maxSentinel;
+  while (curr!=last) {
+    curr = ((PaVTBST::Node*)curr)->rightSnap;
+    int nextVal = curr->getKey();
+    if (nextVal <= currVal) return false;
+    currVal = nextVal;
+  }
+  return true;
 }
 } // namespace pavt
