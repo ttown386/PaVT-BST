@@ -1,5 +1,5 @@
-#ifndef BINARY_SEARCH_TREE_H_
-#define BINARY_SEARCH_TREE_H_
+#ifndef TTREE_INCLUDE_PAVT_PAVT_BST_H_ 
+#define TTREE_INCLUDE_PAVT_PAVT_BST_H_
 
 #include <mutex>
 #include <atomic>
@@ -10,7 +10,7 @@
 
 namespace pavt {
 
-class BinarySearchTree : public base::BinaryTree {
+class PaVTBST : public base::BinaryTree {
  public:
   class Node : public base::BinaryTree::Node, public base::LockNode{
    public:
@@ -37,7 +37,7 @@ class BinarySearchTree : public base::BinaryTree {
   bool Contains(Node* start_node, const int& key);
   int NextField(BinaryTree::Node *node, const int &key);
   Node* Traverse(Node *node, const int &key);
-  friend bool ValidatePaVTBST(BinarySearchTree& bst);
+  friend bool ValidatePaVTBST(PaVTBST& bst);
 };
 } //namespace pavt
-#endif // BINARY_TREE_H_
+#endif // TTREE_INCLUDE_PAVT_PAVT_BST_H_

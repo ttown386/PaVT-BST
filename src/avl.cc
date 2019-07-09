@@ -7,7 +7,7 @@ namespace pavt {
 
 void AVL::Insert(const int& key) {
   Node* new_node = new Node(key);
-  auto return_node = (Node*)BinarySearchTree::Insert(new_node);
+  auto return_node = (Node*)PaVTBST::Insert(new_node);
   if (return_node == nullptr) {
     delete new_node;
   } else {
@@ -16,7 +16,7 @@ void AVL::Insert(const int& key) {
 }
 
 void AVL::Remove(const int& key) {
-  auto balance_nodes = BinarySearchTree::Remove((Node*)root, key);
+  auto balance_nodes = PaVTBST::Remove((Node*)root, key);
   if (balance_nodes->first != nullptr) {
     Rebalance((Node*)balance_nodes->first);
     if (balance_nodes->second != nullptr) Rebalance((Node*)balance_nodes->second);
@@ -25,7 +25,7 @@ void AVL::Remove(const int& key) {
 }
 
 bool AVL::Contains(const int& key) {
-  return BinarySearchTree::Contains((Node*)root, key);
+  return PaVTBST::Contains((Node*)root, key);
 }
 
 // Rotates node to the left. Child becomes nodes parent.
