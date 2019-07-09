@@ -8,6 +8,22 @@
 
 namespace pavt {
 
+void Lock(BinarySearchTree::Node* node, pavt::LockManager* manager) {
+  BinarySearchTree::lock_manager->Lock(node);
+}
+
+bool TryLock(BinarySearchTree::Node* node, pavt::LockManager* manager) {
+  return BinarySearchTree::lock_manager->TryLock(node);
+}
+
+void Unlock(pavt::LockManager* manager) {
+  BinarySearchTree::lock_manager->Unlock();
+}
+
+void UnlockAll(pavt::LockManager* manager) {
+  BinarySearchTree::lock_manager->UnlockAll();
+}
+
 thread_local pavt::LockManager* BinarySearchTree::lock_manager = new pavt::LockManager();
 
 base::BinaryTree::Node* BinarySearchTree::getRoot() {
@@ -57,10 +73,10 @@ BinarySearchTree::Node *BinarySearchTree::Traverse(Node *node, int const &key) {
       field = NextField(curr, key);
       // We have found node
       if (field == HERE) {
-        lock(curr);
+        Lock(curr, lock_manager);
         // If marked then break from first while loop and restart
         if (curr->mark) {
-          unlock();
+          Unlock(lock_manager);
           restart = true;
           break;
         }
@@ -75,7 +91,7 @@ BinarySearchTree::Node *BinarySearchTree::Traverse(Node *node, int const &key) {
       restart = false;
       continue;
     }
-    lock(curr);
+    Lock(curr, lock_manager);
     // grab snapshot
     // check if restart is needed
     bool goLeft = (key < curr->getKey() ? true : false);
@@ -83,7 +99,7 @@ BinarySearchTree::Node *BinarySearchTree::Traverse(Node *node, int const &key) {
     if (curr->mark || 
           (goLeft && (key <= snapShot->getKey())) ||
       (!goLeft && (key >= snapShot->getKey()))) {
-      unlock();
+      Unlock(lock_manager);
       continue;
     }
 
@@ -144,21 +160,6 @@ bool BinarySearchTree::Contains(Node* start_node, const int& key) {
   }
 }
 
-void BinarySearchTree::lock(Node* node) {
-  BinarySearchTree::lock_manager->Lock(node);
-}
-
-bool BinarySearchTree::tryLock(Node* node) {
-  return BinarySearchTree::lock_manager->TryLock(node);
-}
-
-void BinarySearchTree::unlock() {
-  BinarySearchTree::lock_manager->Unlock();
-}
-
-void BinarySearchTree::unlockAll() {
-  BinarySearchTree::lock_manager->UnlockAll();
-}
 
 BinarySearchTree::Node* BinarySearchTree::Insert(Node* node) {
 
@@ -169,7 +170,7 @@ BinarySearchTree::Node* BinarySearchTree::Insert(Node* node) {
   
     // We have a duplicate
     if (curr->getKey()== node->getKey()) {
-      unlockAll();
+      UnlockAll(lock_manager);
       return nullptr;
     }
     
@@ -177,7 +178,7 @@ BinarySearchTree::Node* BinarySearchTree::Insert(Node* node) {
     if (
         (node->getKey() > curr->getKey() && curr->right!=nullptr) ||
         (node->getKey() < curr->getKey() && curr->left!=nullptr)) {
-      unlockAll();
+      UnlockAll(lock_manager);
       continue;
     }
     
@@ -212,7 +213,7 @@ BinarySearchTree::Node* BinarySearchTree::Insert(Node* node) {
     }
 
     // Unlock
-    unlockAll();
+    UnlockAll(lock_manager);
 
     return curr;
   }
@@ -236,21 +237,21 @@ BinarySearchTree::Remove(Node* node, const int& key) {
     // Already checked snapshots so return if current
     // node is not one to be deleted
     if (curr->getKey()!= key) {
-      unlockAll();
+      UnlockAll(lock_manager);
       return new std::pair<Node*, Node*>(nullptr, nullptr);
     }
     
     // Lock Parent
     Node *parent = (Node*)curr->parent;
-    if (!tryLock(parent)) {
-      unlockAll();
+    if (!TryLock(parent, lock_manager)) {
+      UnlockAll(lock_manager);
       continue;
     }
 
     // Some other thread has gone and changed things around
     // Got to check if we already got removed otherwise unlock restart
     if (parent != curr->parent) {
-      unlockAll();
+      UnlockAll(lock_manager);
       if (curr->mark) {
         return new std::pair<Node*, Node*>(nullptr, nullptr);
       }
@@ -283,7 +284,7 @@ BinarySearchTree::Remove(Node* node, const int& key) {
       }
 
       // Unlock all
-      unlockAll();
+      UnlockAll(lock_manager);
       toBalance1 = parent;
 
     } else if (leftChild==nullptr || rightChild==nullptr) {
@@ -294,7 +295,7 @@ BinarySearchTree::Remove(Node* node, const int& key) {
 
       bool hasRightChild = leftChild == nullptr;
       Node *currChild = (hasRightChild) ? rightChild : leftChild;
-      lock(currChild);
+      Lock(currChild, lock_manager);
 
       // Load snaps
       minSnapNode = curr->leftSnap.load();
@@ -306,14 +307,14 @@ BinarySearchTree::Remove(Node* node, const int& key) {
       // if the snapshot of curr is not its child then lock
       // that node as its path can be altered
       if (snapshot!=currChild) {
-        lock(snapshot);
+        Lock(snapshot, lock_manager);
       }
 
       // if the snapshot has changed unlock all and restart
       if ((hasRightChild && snapshot->leftSnap.load()!=curr) || 
           (!hasRightChild && snapshot->rightSnap.load()!=curr) ||
           snapshot->mark) {
-        unlockAll();
+        UnlockAll(lock_manager);
         continue;
       }
 
@@ -332,11 +333,11 @@ BinarySearchTree::Remove(Node* node, const int& key) {
       minSnapNode->rightSnap = maxSnapNode;
       maxSnapNode->leftSnap = minSnapNode;
 
-      unlockAll();
+      UnlockAll(lock_manager);
       toBalance1 = parent;
     } else {
-      lock(leftChild);
-      lock(rightChild);
+      Lock(leftChild, lock_manager);
+      Lock(rightChild, lock_manager);
 
       /* Hard Cases */
       minSnapNode = curr->leftSnap.load();
@@ -345,13 +346,13 @@ BinarySearchTree::Remove(Node* node, const int& key) {
       
       // Lock if leftSnap is not the leftChild
       if (minSnapNode != leftChild) {
-        lock(minSnapNode);
+        Lock(minSnapNode, lock_manager);
       } 
 
       // Check if the LeftSnapshot's right snapshot is the node
       // to be removed
       if (minSnapNode->rightSnap!=curr || minSnapNode->mark) {
-        unlockAll();
+        UnlockAll(lock_manager);
         continue;
       }
       /* Node with where the right child's left node is null */
@@ -375,7 +376,7 @@ BinarySearchTree::Remove(Node* node, const int& key) {
         maxSnapNode->leftSnap = minSnapNode;
 
         // Unlock all
-        unlockAll();
+        UnlockAll(lock_manager);
         toBalance1 = rightChild; 
 
       } else {
@@ -385,18 +386,18 @@ BinarySearchTree::Remove(Node* node, const int& key) {
 
         // Successor's parent is no the right child
         if (succParent!=rightChild) {
-          lock(succParent);
+          Lock(succParent, lock_manager);
 
           if (maxSnapNode->parent != succParent || maxSnapNode->mark) {
-            unlockAll();
+            UnlockAll(lock_manager);
             continue;
           }
         }
 
         // Lock successor
-        lock(succ);
+        Lock(succ, lock_manager);
         if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->mark) {
-          unlockAll();
+          UnlockAll(lock_manager);
           continue;
         }
 
@@ -406,15 +407,15 @@ BinarySearchTree::Remove(Node* node, const int& key) {
         Node *succRightSnapshot = succ->rightSnap.load();
 
         if (succRightChild!=nullptr)  {
-          lock(succRightChild);
+          Lock(succRightChild, lock_manager);
           succRightSnapshot = succ->rightSnap.load();
 
           if (succRightSnapshot!=succRightChild) {
-            lock(succRightSnapshot);
+            Lock(succRightSnapshot, lock_manager);
           }
           // Check if it's left snap is still the successor
           if (succRightSnapshot->leftSnap.load()!=succ||succRightSnapshot->mark) {
-            unlockAll();
+            UnlockAll(lock_manager);
             continue;
           }
         }
@@ -450,7 +451,7 @@ BinarySearchTree::Remove(Node* node, const int& key) {
         minSnapNode->rightSnap = succ;
 
         // Unlock All
-        unlockAll();
+        UnlockAll(lock_manager);
         toBalance1 = succ;
         toBalance2 = succParent;
       }

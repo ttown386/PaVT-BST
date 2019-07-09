@@ -38,10 +38,6 @@ class BinarySearchTree : public base::BinaryTree {
   bool Contains(Node* start_node, const int& key);
   int NextField(BinaryTree::Node *node, const int &key);
   Node* Traverse(Node *node, const int &key);
-  void lock(Node* node);
-  bool tryLock(Node* node);
-  void unlock();
-  void unlockAll();
 };
 } //namespace pavt
 #endif // BINARY_TREE_H_
