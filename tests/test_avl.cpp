@@ -57,8 +57,8 @@ TEST_F(TestPaVTAVL, InsertSingleRightRotation) {
   const std::vector<int> new_preorder = {max_val, 10, 4, new_val};
   const std::vector<int> new_inorder = {4, 10, new_val, max_val}; 
   small_avl->Insert(new_val);
-  std::vector<int> inorder = inOrderTraversal(*small_avl);
-  std::vector<int> preorder = preOrderTraversal(*small_avl);
+  std::vector<int> inorder = InOrderTraversal(*small_avl);
+  std::vector<int> preorder = PreOrderTraversal(*small_avl);
   EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));
   EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
 }
@@ -68,8 +68,8 @@ TEST_F(TestPaVTAVL, InsertSingleLeftRotation) {
   const std::vector<int> new_preorder = {max_val, 4, 2, 1, 3, 10};
   const std::vector<int> new_inorder = {1, 2, 3, 4, 10, max_val}; 
   insert_vector_into_tree(small_avl, new_preorder);
-  std::vector<int> inorder = inOrderTraversal(*small_avl);
-  std::vector<int> preorder = preOrderTraversal(*small_avl);
+  std::vector<int> inorder = InOrderTraversal(*small_avl);
+  std::vector<int> preorder = PreOrderTraversal(*small_avl);
   EXPECT_THAT(inorder, testing::ContainerEq(new_inorder));
   EXPECT_THAT(preorder, testing::ContainerEq(new_preorder));
 }
@@ -86,8 +86,8 @@ TEST_F(TestPaVTAVL, AVLInsertLeftRightRot) {
   for (std::size_t i=0; i<avl_data.size(); i++) {
     avl_tree->Insert(avl_data[i]);
   }
-  std::vector<int> inorder = inOrderTraversal(*avl_tree);
-  std::vector<int> preorder = preOrderTraversal(*avl_tree);
+  std::vector<int> inorder = InOrderTraversal(*avl_tree);
+  std::vector<int> preorder = PreOrderTraversal(*avl_tree);
   delete avl_tree;
 
   EXPECT_THAT(inorder, testing::ContainerEq(avl_inorder));
@@ -106,8 +106,8 @@ TEST_F(TestPaVTAVL, AVLInsertRightLeftRot) {
   for (auto key = avl_data.begin(); key != avl_data.end(); key++) {
     avl_tree->Insert(*key);
   }
-  std::vector<int> inorder = inOrderTraversal(*avl_tree);
-  std::vector<int> preorder = preOrderTraversal(*avl_tree);
+  std::vector<int> inorder = InOrderTraversal(*avl_tree);
+  std::vector<int> preorder = PreOrderTraversal(*avl_tree);
   delete avl_tree;
 
   EXPECT_THAT(inorder, testing::ContainerEq(avl_inorder));
@@ -131,7 +131,7 @@ TEST_F(TestPaVTAVL, AVLDeleteLogNRotations) {
     max_val, 45, 20, 10, 5, 15, 30, 25, 35, 37, 60,
     50, 55, 57, 70, 65, 67, 75, 72, 77, 80
   };
-  std::vector<int> preorder = preOrderTraversal(*avl);
+  std::vector<int> preorder = PreOrderTraversal(*avl);
   EXPECT_THAT(preorder, testing::ContainerEq(avl_preorder));
 }
 }

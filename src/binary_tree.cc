@@ -15,7 +15,7 @@ class NodeDepth {
   }
 };
 
-std::vector<int> inOrderTraversal(BinaryTree &bst) {
+std::vector<int> InOrderTraversal(BinaryTree &bst) {
   std::stack<BinaryTree::Node*> stack;
 
   std::vector<int> return_vals;
@@ -35,7 +35,7 @@ std::vector<int> inOrderTraversal(BinaryTree &bst) {
   return return_vals;
 }
 
-std::vector<int> preOrderTraversal(BinaryTree &bst) {
+std::vector<int> PreOrderTraversal(BinaryTree &bst) {
 
   std::stack<BinaryTree::Node*> stack;
   std::vector<int> return_vals;

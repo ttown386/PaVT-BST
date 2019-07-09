@@ -25,16 +25,16 @@ class BinaryTree {
     Node* left, *right, *parent;
     Node(const int& key) : _key(key) { left = right = parent = nullptr; }
     virtual ~Node() {}
-    int getKey() { return _key; }
-    Node *get(int field) {
+    inline int getKey() { return _key; }
+    inline Node *get(int field) {
       if (field==0) return this->left;
       if (field==1) return this->right;
       if (field==2) return this;
     }
   };
   inline Node* GetRoot() { return root; }
-  friend std::vector<int> inOrderTraversal(BinaryTree &bst);
-  friend std::vector<int> preOrderTraversal(BinaryTree &bst);
+  friend std::vector<int> InOrderTraversal(BinaryTree &bst);
+  friend std::vector<int> PreOrderTraversal(BinaryTree &bst);
 
  protected:
   Node* root;
