@@ -132,7 +132,7 @@ void AVL::Rebalance(Node *node) {
     parent->lock.lock();
     if (node->parent!=parent) {
       parent->lock.unlock();
-      if (node->mark) {
+      if (node->IsMarked()) {
         return;
       }
 
@@ -142,7 +142,7 @@ void AVL::Rebalance(Node *node) {
 
     // lock node
     node->lock.lock();
-    if (node->mark) {
+    if (node->IsMarked()) {
       node->lock.unlock();
       parent->lock.unlock();
       return;

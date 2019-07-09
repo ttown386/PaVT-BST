@@ -18,9 +18,11 @@ class BinarySearchTree : public base::BinaryTree {
     std::atomic<Node* > rightSnap;
     Node(const int& key) : BinaryTree::Node(key) {
       leftSnap = rightSnap = this;
-      mark = false;
+      _mark = false;
     }
     ~Node() {}
+    inline void Mark() { _mark = true; }
+    inline bool IsMarked() { return _mark; }
   };
   static thread_local pavt::LockManager* lock_manager;
   virtual void Insert(const int& key) = 0;

@@ -63,7 +63,7 @@ BinarySearchTree::Node *BinarySearchTree::Traverse(Node *node, int const &key) {
       if (field == HERE) {
         Lock(curr, lock_manager);
         // If marked then break from first while loop and restart
-        if (curr->mark) {
+        if (curr->IsMarked()) {
           Unlock(lock_manager);
           restart = true;
           break;
@@ -84,9 +84,9 @@ BinarySearchTree::Node *BinarySearchTree::Traverse(Node *node, int const &key) {
     // check if restart is needed
     bool goLeft = (key < curr->getKey() ? true : false);
     Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
-    if (curr->mark || 
-          (goLeft && (key <= snapShot->getKey())) ||
-      (!goLeft && (key >= snapShot->getKey()))) {
+    if (curr->IsMarked() || 
+        (goLeft && (key <= snapShot->getKey())) ||
+        (!goLeft && (key >= snapShot->getKey()))) {
       Unlock(lock_manager);
       continue;
     }
@@ -119,7 +119,7 @@ bool BinarySearchTree::Contains(Node* start_node, const int& key) {
       if (field == HERE) {
 
         // If marked then break from first while loop and restart
-        if (curr->mark) {
+        if (curr->IsMarked()) {
           restart = true;
           break;
         }
@@ -138,9 +138,9 @@ bool BinarySearchTree::Contains(Node* start_node, const int& key) {
     // check if restart is needed
     bool goLeft = (key < curr->getKey() ? true : false);
     Node *snapShot = (goLeft ? curr->leftSnap : curr->rightSnap);
-    if (curr->mark || 
-      (goLeft && (key <= snapShot->getKey())) ||
-      (!goLeft && (key >= snapShot->getKey()))) {
+    if (curr->IsMarked() || 
+        (goLeft && (key <= snapShot->getKey())) ||
+        (!goLeft && (key >= snapShot->getKey()))) {
       continue;
     }
 
@@ -240,7 +240,7 @@ BinarySearchTree::Remove(Node* node, const int& key) {
     // Got to check if we already got removed otherwise unlock restart
     if (parent != curr->parent) {
       UnlockAll(lock_manager);
-      if (curr->mark) {
+      if (curr->IsMarked()) {
         return new std::pair<Node*, Node*>(nullptr, nullptr);
       }
       continue;
@@ -258,7 +258,7 @@ BinarySearchTree::Remove(Node* node, const int& key) {
       minSnapNode = curr->leftSnap.load();
 
       // Logical Removal
-      curr->mark = true;
+      curr->Mark();
 
       // Update pointers and snapshots
       if (parentIsLarger) {
@@ -301,13 +301,13 @@ BinarySearchTree::Remove(Node* node, const int& key) {
       // if the snapshot has changed unlock all and restart
       if ((hasRightChild && snapshot->leftSnap.load()!=curr) || 
           (!hasRightChild && snapshot->rightSnap.load()!=curr) ||
-          snapshot->mark) {
+          snapshot->IsMarked()) {
         UnlockAll(lock_manager);
         continue;
       }
 
       // Logical removal
-      curr->mark = true;
+      curr->Mark();
       currChild = (hasRightChild) ? rightChild : leftChild;
       if (parent->left==curr) {
         parent->left = (currChild);
@@ -339,14 +339,14 @@ BinarySearchTree::Remove(Node* node, const int& key) {
 
       // Check if the LeftSnapshot's right snapshot is the node
       // to be removed
-      if (minSnapNode->rightSnap!=curr || minSnapNode->mark) {
+      if (minSnapNode->rightSnap!=curr || minSnapNode->IsMarked()) {
         UnlockAll(lock_manager);
         continue;
       }
       /* Node with where the right child's left node is null */
       if (rightChild->left == nullptr) {
 
-        curr->mark = true;
+        curr->Mark();
 
         // Updated pointers
         rightChild->left = (leftChild);
@@ -376,7 +376,7 @@ BinarySearchTree::Remove(Node* node, const int& key) {
         if (succParent!=rightChild) {
           Lock(succParent, lock_manager);
 
-          if (maxSnapNode->parent != succParent || maxSnapNode->mark) {
+          if (maxSnapNode->parent != succParent || maxSnapNode->IsMarked()) {
             UnlockAll(lock_manager);
             continue;
           }
@@ -384,7 +384,7 @@ BinarySearchTree::Remove(Node* node, const int& key) {
 
         // Lock successor
         Lock(succ, lock_manager);
-        if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->mark) {
+        if (maxSnapNode->leftSnap.load()!=curr || maxSnapNode->IsMarked()) {
           UnlockAll(lock_manager);
           continue;
         }
@@ -402,14 +402,14 @@ BinarySearchTree::Remove(Node* node, const int& key) {
             Lock(succRightSnapshot, lock_manager);
           }
           // Check if it's left snap is still the successor
-          if (succRightSnapshot->leftSnap.load()!=succ||succRightSnapshot->mark) {
+          if (succRightSnapshot->leftSnap.load()!=succ||succRightSnapshot->IsMarked()) {
             UnlockAll(lock_manager);
             continue;
           }
         }
 
         // Mark the node
-        curr->mark = true;
+        curr->Mark();
 
         succ->right = (rightChild);
         rightChild->parent = (succ);
