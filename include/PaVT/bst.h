@@ -2,23 +2,23 @@
 // Created by ttown on 9/30/2018.
 //
 
-#ifndef PAVT_BINARY_SEARCH_TREE_H_
-#define PAVT_BINARY_SEARCH_TREE_H_ 
+#ifndef TTREE_INCLUDE_PAVT_BST_H_
+#define TTREE_INCLUDE_PAVT_BST_H_ 
 
 #include <mutex>
 #include <atomic>
 
 #include <PaVT/Base/binary_tree.h>
-#include <PaVT/binary_search_tree.h>
+#include <PaVT/pavt_bst.h>
 #include <PaVT/lock_manager.h>
 
 namespace pavt {
 
-class BST: public BinarySearchTree {
+class BST: public PaVTBST {
  public:
   inline BST() {
-    minSentinel = new BinarySearchTree::Node(iMin);
-    maxSentinel = new BinarySearchTree::Node(iMax);
+    minSentinel = new PaVTBST::Node(iMin);
+    maxSentinel = new PaVTBST::Node(iMax);
 
     maxSentinel->parent = (minSentinel);
     minSentinel->right = (maxSentinel);
@@ -33,8 +33,9 @@ class BST: public BinarySearchTree {
   void Insert(const int& key);
   void Remove(const int& key);
   bool Contains(const int& key);
+  
  private:
   void DeleteTree(Node* start);
 };
-}
-#endif // PAVT_BINARY_SEARCH_TREE_H_
+} // namespace pavt
+#endif // TTREE_INCLUDE_PAVT_BST_H_

@@ -4,29 +4,29 @@
 #include <algorithm>
 #include <thread>
 
-#include <PaVT/binary_search_tree.h>
+#include <PaVT/pavt_bst.h>
 
 namespace pavt {
 
-void Lock(BinarySearchTree::Node* node, pavt::LockManager* manager) {
-  BinarySearchTree::lock_manager->Lock(node);
+void Lock(PaVTBST::Node* node, pavt::LockManager* manager) {
+  PaVTBST::lock_manager->Lock(node);
 }
 
-bool TryLock(BinarySearchTree::Node* node, pavt::LockManager* manager) {
-  return BinarySearchTree::lock_manager->TryLock(node);
+bool TryLock(PaVTBST::Node* node, pavt::LockManager* manager) {
+  return PaVTBST::lock_manager->TryLock(node);
 }
 
 void Unlock(pavt::LockManager* manager) {
-  BinarySearchTree::lock_manager->Unlock();
+  PaVTBST::lock_manager->Unlock();
 }
 
 void UnlockAll(pavt::LockManager* manager) {
-  BinarySearchTree::lock_manager->UnlockAll();
+  PaVTBST::lock_manager->UnlockAll();
 }
 
-thread_local pavt::LockManager* BinarySearchTree::lock_manager = new pavt::LockManager();
+thread_local pavt::LockManager* PaVTBST::lock_manager = new pavt::LockManager();
 
-int BinarySearchTree::NextField(BinaryTree::Node *node, int const &key) {
+int PaVTBST::NextField(BinaryTree::Node *node, int const &key) {
 
   // c1(node, key) = L
   if (key<node->getKey()) return LEFT;
@@ -48,7 +48,7 @@ int BinarySearchTree::NextField(BinaryTree::Node *node, int const &key) {
  * @param  key key value to search for
  * @return      The last node in the traversal which is now locked.
  */
-BinarySearchTree::Node *BinarySearchTree::Traverse(Node *node, int const &key) {
+PaVTBST::Node *PaVTBST::Traverse(Node *node, int const &key) {
   bool restart = false;
   while (true) {
 
@@ -100,7 +100,7 @@ BinarySearchTree::Node *BinarySearchTree::Traverse(Node *node, int const &key) {
  * @param  key key to search for
  * @return      A boolean value
  */
-bool BinarySearchTree::Contains(Node* start_node, const int& key) {
+bool PaVTBST::Contains(Node* start_node, const int& key) {
   bool restart = false;
   while (true) {
 
@@ -149,7 +149,7 @@ bool BinarySearchTree::Contains(Node* start_node, const int& key) {
 }
 
 
-BinarySearchTree::Node* BinarySearchTree::Insert(Node* node) {
+PaVTBST::Node* PaVTBST::Insert(Node* node) {
 
   // Continue to attempt insertion
   while (true) {
@@ -207,8 +207,8 @@ BinarySearchTree::Node* BinarySearchTree::Insert(Node* node) {
   }
 }
 
-std::pair<BinarySearchTree::Node*, BinarySearchTree::Node*>*
-BinarySearchTree::Remove(Node* node, const int& key) {
+std::pair<PaVTBST::Node*, PaVTBST::Node*>*
+PaVTBST::Remove(Node* node, const int& key) {
 
   Node *maxSnapNode;
   Node *minSnapNode;
@@ -448,12 +448,12 @@ BinarySearchTree::Remove(Node* node, const int& key) {
   return new std::pair<Node*, Node*>(toBalance1, toBalance2);
 }
 
-bool ValidatePaVTBST (BinarySearchTree& bst) {
+bool ValidatePaVTBST (PaVTBST& bst) {
   auto curr = bst.minSentinel;
   int currVal = curr->getKey();
   auto last = bst.maxSentinel;
   while (curr!=last) {
-    curr = ((BinarySearchTree::Node*)curr)->rightSnap;
+    curr = ((PaVTBST::Node*)curr)->rightSnap;
     int nextVal = curr->getKey();
     if (nextVal <= currVal) return false;
     currVal = nextVal;

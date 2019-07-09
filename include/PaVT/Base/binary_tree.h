@@ -16,7 +16,6 @@ const int LEFT = 0;
 const int RIGHT = 1;
 const int HERE = 2;
 
-
 namespace base {
 
 class BinaryTree {
@@ -38,6 +37,7 @@ class BinaryTree {
   inline Node* GetRoot() { return root; }
   friend std::vector<int> inOrderTraversal(BinaryTree &bst);
   friend std::vector<int> preOrderTraversal(BinaryTree &bst);
+
  protected:
   Node* root;
 };

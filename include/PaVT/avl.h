@@ -5,6 +5,9 @@
 
 namespace pavt {
 
+const int MAXBF = 1; // Max Balance Factor
+const int MINBF = -1; // Min Balance Factor
+
 class AVL : public BST {
  public:
   class Node : public BST::Node {
@@ -17,6 +20,7 @@ class AVL : public BST {
   void Insert(const int& key);
   void Remove(const int& key);
   bool Contains(const int& key);
+
  protected:
   void RotateLeft(Node* child, Node* node, Node* parent);
   void RotateRight(Node* child, Node* node, Node* parent);

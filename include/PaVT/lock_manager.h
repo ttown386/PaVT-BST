@@ -15,6 +15,7 @@ class LockManager {
   bool TryLock(base::LockNode* node);
   base::LockNode* Unlock();
   void UnlockAll();
+  
  protected:
   std::stack<base::LockNode*> _lock_stack;
 };
