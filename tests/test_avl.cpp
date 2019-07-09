@@ -4,8 +4,7 @@
 #include <gmock/gmock.h>
 
 #include <PaVT/Base/binary_tree.h>
-#include "PaVT/bst.h"
-#include "PaVT/avl.h"
+#include <PaVT/pavt/avl.h>
 
 using namespace pavt;
 namespace {

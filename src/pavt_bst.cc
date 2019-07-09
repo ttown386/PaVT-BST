@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <thread>
 
-#include <PaVT/pavt_bst.h>
+#include <PaVT/pavt/pavt_bst.h>
 
 namespace pavt {
 

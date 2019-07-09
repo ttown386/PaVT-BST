@@ -1,7 +1,7 @@
-#ifndef PAVT_AVL_TREE_H_
-#define PAVT_AVL_TREE_H_
+#ifndef TTREE_INCLUDE_PAVT_PAVT_AVL_TREE_H_
+#define TTREE_INCLUDE_PAVT_PAVT_AVL_TREE_H_ 
 
-#include <PaVT/bst.h>
+#include <PaVT/pavt/bst.h>
 
 namespace pavt {
 
@@ -28,4 +28,4 @@ class AVL : public BST {
   void Rebalance(Node* node);
 };
 }
-#endif // PAVT_AVL_TREE_H_
+#endif // TTREE_INCLUDE_PAVT_PAVT_AVL_TREE_H_

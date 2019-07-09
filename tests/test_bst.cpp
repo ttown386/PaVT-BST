@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "PaVT/bst.h"
+#include <PaVT/pavt/bst.h>
 
 using namespace pavt;
 namespace {

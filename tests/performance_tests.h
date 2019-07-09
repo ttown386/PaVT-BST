@@ -11,7 +11,7 @@
 #include <chrono>
 
 #include <PaVT/Base/binary_tree.h>
-#include <PaVT/bst.h>
+#include <PaVT/pavt/bst.h>
 
 using namespace pavt;
 using namespace base;

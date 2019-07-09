@@ -1,4 +1,4 @@
-#include "PaVT/lock_manager.h"
+#include <PaVT/pavt/lock_manager.h>
 
 namespace pavt {
 

@@ -4,12 +4,10 @@
 #include <vector>
 
 #include <PaVT/Base/locknode.h>
-#include <PaVT/lock_manager.h>
+#include <PaVT/pavt/lock_manager.h>
 
 namespace pavt {
-// Constants
-const int MAXBF = 1; // Max Balance Factor
-const int MINBF = -1; // Min Balance Factor
+
 const int iMin = std::numeric_limits<int>::min(); // Min Integer
 const int iMax = std::numeric_limits<int>::max(); // Max Integer
 const int LEFT = 0;

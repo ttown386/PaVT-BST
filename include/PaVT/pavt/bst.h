@@ -2,15 +2,15 @@
 // Created by ttown on 9/30/2018.
 //
 
-#ifndef TTREE_INCLUDE_PAVT_BST_H_
-#define TTREE_INCLUDE_PAVT_BST_H_ 
+#ifndef TTREE_INCLUDE_PAVT_PAVT_BST_H_
+#define TTREE_INCLUDE_PAVT_PAVT_BST_H_ 
 
 #include <mutex>
 #include <atomic>
 
 #include <PaVT/Base/binary_tree.h>
-#include <PaVT/pavt_bst.h>
-#include <PaVT/lock_manager.h>
+#include <PaVT/pavt/pavt_bst.h>
+#include <PaVT/pavt/lock_manager.h>
 
 namespace pavt {
 
@@ -38,4 +38,4 @@ class BST: public PaVTBST {
   void DeleteTree(Node* start);
 };
 } // namespace pavt
-#endif // TTREE_INCLUDE_PAVT_BST_H_
+#endif // TTREE_INCLUDE_PAVT_PAVT_BST_H_

@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <thread>
 
-#include <PaVT/bst.h>
+#include <PaVT/pavt/bst.h>
 
 namespace pavt {
 /**

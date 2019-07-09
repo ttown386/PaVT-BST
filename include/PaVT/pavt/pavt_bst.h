@@ -1,12 +1,12 @@
-#ifndef TTREE_INCLUDE_PAVT_PAVT_BST_H_ 
-#define TTREE_INCLUDE_PAVT_PAVT_BST_H_
+#ifndef TTREE_INCLUDE_PAVT_PAVT_PAVT_BST_H_ 
+#define TTREE_INCLUDE_PAVT_PAVT_PAVT_BST_H_
 
 #include <mutex>
 #include <atomic>
 
 #include <PaVT/Base/binary_tree.h>
 #include <PaVT/Base/locknode.h>
-#include <PaVT/lock_manager.h>
+#include <PaVT/pavt/lock_manager.h>
 
 namespace pavt {
 
@@ -41,4 +41,4 @@ class PaVTBST : public base::BinaryTree {
   friend bool ValidatePaVTBST(PaVTBST& bst);
 };
 } //namespace pavt
-#endif // TTREE_INCLUDE_PAVT_PAVT_BST_H_
+#endif // TTREE_INCLUDE_PAVT_PAVT_PAVT_BST_H_
