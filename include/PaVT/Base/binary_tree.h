@@ -1,8 +1,7 @@
 #ifndef TTREE_INCLUDE_PAVT_BASE_BINARY_TREE_H_
 #define TTREE_INCLUDE_PAVT_BASE_BINARY_TREE_H_
 
-#include <mutex>
-#include <atomic>
+#include <vector>
 
 #include <PaVT/Base/locknode.h>
 #include <PaVT/lock_manager.h>
@@ -27,22 +26,18 @@ class BinaryTree {
     int _key;
    public:
     Node* left, *right, *parent;
-    int height;
-    Node(const int& key) : _key(key) , height(0) {
-      left = right = parent = nullptr;
-    }
+    Node(const int& key) : _key(key) { left = right = parent = nullptr; }
     virtual ~Node() {}
-
-    int getKey() {
-      return _key;
-    }
-
+    int getKey() { return _key; }
     Node *get(int field) {
       if (field==0) return this->left;
       if (field==1) return this->right;
       if (field==2) return this;
     }
   };
+  inline Node* GetRoot() { return root; }
+  friend std::vector<int> inOrderTraversal(BinaryTree &bst);
+  friend std::vector<int> preOrderTraversal(BinaryTree &bst);
  protected:
   Node* root;
 };

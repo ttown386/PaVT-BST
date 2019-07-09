@@ -26,18 +26,6 @@ void UnlockAll(pavt::LockManager* manager) {
 
 thread_local pavt::LockManager* BinarySearchTree::lock_manager = new pavt::LockManager();
 
-base::BinaryTree::Node* BinarySearchTree::getRoot() {
-  return root;
-}
-
-BinarySearchTree::Node* BinarySearchTree::getMinSentinel() {
-  return minSentinel;
-}
-
-BinarySearchTree::Node* BinarySearchTree::getMaxSentinel() {
-  return maxSentinel;
-}
-
 int BinarySearchTree::NextField(BinaryTree::Node *node, int const &key) {
 
   // c1(node, key) = L
@@ -458,5 +446,18 @@ BinarySearchTree::Remove(Node* node, const int& key) {
     }
   }
   return new std::pair<Node*, Node*>(toBalance1, toBalance2);
+}
+
+bool ValidatePaVTBST (BinarySearchTree& bst) {
+  auto curr = bst.minSentinel;
+  int currVal = curr->getKey();
+  auto last = bst.maxSentinel;
+  while (curr!=last) {
+    curr = ((BinarySearchTree::Node*)curr)->rightSnap;
+    int nextVal = curr->getKey();
+    if (nextVal <= currVal) return false;
+    currVal = nextVal;
+  }
+  return true;
 }
 } // namespace pavt

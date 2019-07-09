@@ -26,9 +26,6 @@ class BinarySearchTree : public base::BinaryTree {
   virtual void Insert(const int& key) = 0;
   virtual void Remove(const int& key) = 0;
   virtual bool Contains(const int& key) = 0;
-  BinaryTree::Node *getRoot();
-  Node *getMinSentinel();
-  Node *getMaxSentinel();
 
  protected:
   Node* maxSentinel;
@@ -38,6 +35,7 @@ class BinarySearchTree : public base::BinaryTree {
   bool Contains(Node* start_node, const int& key);
   int NextField(BinaryTree::Node *node, const int &key);
   Node* Traverse(Node *node, const int &key);
+  friend bool ValidatePaVTBST(BinarySearchTree& bst);
 };
 } //namespace pavt
 #endif // BINARY_TREE_H_

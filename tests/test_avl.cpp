@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "UtilitiesBST.h"
+#include <PaVT/Base/binary_tree.h>
 #include "PaVT/bst.h"
 #include "PaVT/avl.h"
 
