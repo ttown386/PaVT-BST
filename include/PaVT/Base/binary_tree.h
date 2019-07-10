@@ -38,6 +38,8 @@ class BinaryTree {
 
  protected:
   Node* root;
+  void RotateLeft(Node* child, Node* node, Node* parent);
+  void RotateRight(Node* child, Node* node, Node* parent);
 };
 } // namespace base
 } //namespace pavt

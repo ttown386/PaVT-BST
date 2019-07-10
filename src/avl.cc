@@ -31,78 +31,30 @@ bool AVL::Contains(const int& key) {
 // Rotates node to the left. Child becomes nodes parent.
 void AVL::RotateLeft(Node *child, Node *node, Node *parent) {
 
-  // Grab the nodes right child
-  Node *newRoot = child;
-
-  // Give node the left child of the rotated node since the
-  // key is greater than node
-  Node *temp = (Node*)newRoot->left;
-  node->right = (temp);
-
-  // The node's right child (temp) now moves up to take the place of
-  // node
-  newRoot->left = (node);
-
-  // Update parents
-  if(temp!=nullptr) temp->parent =(node);
-
-  Node *rootParent = parent;
-
-  if (rootParent->right == node) {
-    rootParent->right = (newRoot);
-  } else {
-    rootParent->left = (newRoot);
-  }
-
-  newRoot->parent = (rootParent);
-  node->parent = (newRoot);
+  base::BinaryTree::RotateLeft(child, node, parent); 
 
   // Update the tree heights
   int leftHeight = Height((Node*)node->left);
   int rightHeight = Height((Node*)node->right);
   node->height = (1 + std::max(leftHeight, rightHeight));
 
-  int newRootLeftHeight = Height((Node*)newRoot->left);
-  int newRootRightHeight = Height((Node*)newRoot->right);
-  newRoot->height = (1 + std::max(newRootLeftHeight, newRootRightHeight));
+  int newRootLeftHeight = Height((Node*)child->left);
+  int newRootRightHeight = Height((Node*)child->right);
+  child->height = (1 + std::max(newRootLeftHeight, newRootRightHeight));
 }
 
 //Rotates node to the right. Child becomes nodes parent
 void AVL::RotateRight(Node *child, Node *node, Node *parent) {
 
-  // Grab the nodes left child
-  Node* newRoot = child;
-
-  // Give node the left child of newRoot since the key
-  // is less than node
-  Node *temp = (Node*)newRoot->right;
-  node->left = (temp);
-
-  // The new Root moves up to take the place of node
-  // Now set newNodes right pointer to node
-  newRoot->right = (node);
-
-  // Update parents
-  if(temp!=nullptr) temp->parent = (node);
-
-  Node *rootParent = parent;
-  if (rootParent->right == node) {
-    rootParent->right = (newRoot);
-  } else {
-    rootParent->left = (newRoot);
-  }
-
-  newRoot->parent = (rootParent);
-  node->parent = (newRoot);
-
+  base::BinaryTree::RotateRight(child, node, parent);
   // Update the tree heights
   int leftHeight = Height((Node*)node->left);
   int rightHeight = Height((Node*)node->right);
   node->height = (1 + std::max(leftHeight, rightHeight));
 
-  int newRootLeftHeight = Height((Node*)newRoot->left);
-  int newRootRightHeight = Height((Node*)newRoot->right);
-  newRoot->height = (1 + std::max(newRootLeftHeight, newRootRightHeight));
+  int newRootLeftHeight = Height((Node*)child->left);
+  int newRootRightHeight = Height((Node*)child->right);
+  child->height = (1 + std::max(newRootLeftHeight, newRootRightHeight));
 }
 
 /*
