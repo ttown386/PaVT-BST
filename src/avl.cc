@@ -4,6 +4,23 @@
 #include <PaVT/pavt/avl.h>
 
 namespace pavt {
+namespace {
+
+int height(AVL::Node* node) {
+  return (node == nullptr) ? -1 : node->height;
+}
+
+void update_height(AVL::Node* node) {
+  int leftHeight = height((AVL::Node*)node->left);
+  int rightHeight = height((AVL::Node*)node->right);
+  node->height = 1 + std::max(leftHeight, rightHeight);
+}
+
+void update_heights(AVL::Node* previousRoot, AVL::Node* newRoot) {
+  update_height(previousRoot);
+  update_height(newRoot);
+}
+}
 
 void AVL::Insert(const int& key) {
   Node* new_node = new Node(key);
@@ -30,31 +47,14 @@ bool AVL::Contains(const int& key) {
 
 // Rotates node to the left. Child becomes nodes parent.
 void AVL::RotateLeft(Node *child, Node *node, Node *parent) {
-
   base::BinaryTree::RotateLeft(child, node, parent); 
-
-  // Update the tree heights
-  int leftHeight = Height((Node*)node->left);
-  int rightHeight = Height((Node*)node->right);
-  node->height = (1 + std::max(leftHeight, rightHeight));
-
-  int newRootLeftHeight = Height((Node*)child->left);
-  int newRootRightHeight = Height((Node*)child->right);
-  child->height = (1 + std::max(newRootLeftHeight, newRootRightHeight));
+  update_heights(child, node);
 }
 
 //Rotates node to the right. Child becomes nodes parent
 void AVL::RotateRight(Node *child, Node *node, Node *parent) {
-
   base::BinaryTree::RotateRight(child, node, parent);
-  // Update the tree heights
-  int leftHeight = Height((Node*)node->left);
-  int rightHeight = Height((Node*)node->right);
-  node->height = (1 + std::max(leftHeight, rightHeight));
-
-  int newRootLeftHeight = Height((Node*)child->left);
-  int newRootRightHeight = Height((Node*)child->right);
-  child->height = (1 + std::max(newRootLeftHeight, newRootRightHeight));
+  update_heights(child, node);
 }
 
 /*
