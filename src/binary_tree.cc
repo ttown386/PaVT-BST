@@ -4,6 +4,46 @@
 
 namespace pavt {
 namespace base {
+namespace {
+
+void update_parents(
+    BinaryTree::Node* new_root,
+    BinaryTree::Node* node,
+    BinaryTree::Node* parent,
+    BinaryTree::Node* subtree) {
+  if(subtree != nullptr) {
+    subtree->parent = node;
+  }
+
+  BinaryTree::Node *rootParent = parent;
+
+  if (rootParent->right == node) {
+    rootParent->right = new_root;
+  } else {
+    rootParent->left = new_root;
+  }
+  new_root->parent = rootParent;
+  node->parent = new_root;
+}
+} // namespace
+
+void BinaryTree::RotateLeft(Node *child, Node *node, Node *parent) {
+  Node *newRoot = child;
+  Node *temp = newRoot->left;
+  node->right = temp;
+  newRoot->left = node;
+
+  update_parents(newRoot, node, parent, temp);
+}
+
+void BinaryTree::RotateRight(Node *child, Node *node, Node *parent) {
+  Node* newRoot = child;
+  Node *temp = newRoot->right;
+  node->left = temp;
+  newRoot->right = node;
+
+  update_parents(newRoot, node, parent, temp);
+}
 
 class NodeDepth {
  public:
