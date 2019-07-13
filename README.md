@@ -1,4 +1,4 @@
-# PaVT BST
+# TTree
 ### Master Branch
 [![Build Status](https://travis-ci.org/tylertownsend/PaVT-BST.svg?branch=master)](https://travis-ci.org/tylertownsend/PaVT-BST)
 [![Coverage Status](https://coveralls.io/repos/github/tylertownsend/PaVT-BST/badge.svg?branch=master)](https://coveralls.io/github/tylertownsend/PaVT-BST?branch=master)
