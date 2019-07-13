@@ -1,5 +1,5 @@
-#include <PaVT/pavt/avl.h>
-#include <PaVT/Base/binary_tree.h>
+#include <ttree/pavt/avl.h>
+#include <ttree/base/binary_tree.h>
 
 #include "performance_tests.h"
 

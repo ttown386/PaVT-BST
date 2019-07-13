@@ -4,9 +4,9 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <PaVT/Base/locknode.h>
-#include <PaVT/pavt/bst.h>
-#include <PaVT/pavt/lock_manager.h>
+#include <ttree/base/locknode.h>
+#include <ttree/pavt/bst.h>
+#include <ttree/pavt/lock_manager.h>
 
 namespace {
 

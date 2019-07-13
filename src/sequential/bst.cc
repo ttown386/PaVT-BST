@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <PaVT/sequential/bst.h>
+#include <ttree/sequential/bst.h>
 
 namespace pavt {
 namespace seq {

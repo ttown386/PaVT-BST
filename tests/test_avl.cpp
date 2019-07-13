@@ -3,8 +3,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <PaVT/Base/binary_tree.h>
-#include <PaVT/pavt/avl.h>
+#include <ttree/base/binary_tree.h>
+#include <ttree/pavt/avl.h>
 
 using namespace pavt;
 namespace {

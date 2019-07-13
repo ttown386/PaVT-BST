@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#include <PaVT/Base/locknode.h>
-#include <PaVT/pavt/lock_manager.h>
+#include <ttree/base/locknode.h>
+#include <ttree/pavt/lock_manager.h>
 
 namespace pavt {
 

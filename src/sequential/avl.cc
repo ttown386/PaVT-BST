@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <functional>
 
-#include <PaVT/sequential/avl.h>
+#include <ttree/sequential/avl.h>
 
 namespace pavt {
 namespace seq {

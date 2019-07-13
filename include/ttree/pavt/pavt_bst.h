@@ -4,9 +4,9 @@
 #include <mutex>
 #include <atomic>
 
-#include <PaVT/Base/binary_tree.h>
-#include <PaVT/Base/locknode.h>
-#include <PaVT/pavt/lock_manager.h>
+#include <ttree/base/binary_tree.h>
+#include <ttree/base/locknode.h>
+#include <ttree/pavt/lock_manager.h>
 
 namespace pavt {
 
