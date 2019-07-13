@@ -2,7 +2,6 @@
 ### Master Branch
 [![Build Status](https://travis-ci.org/tylertownsend/TTree.svg?branch=master)](https://travis-ci.org/tylertownsend/TTree)
 [![Coverage Status](https://coveralls.io/repos/github/tylertownsend/TTree/badge.svg?branch=master)](https://coveralls.io/github/tylertownsend/TTree?branch=master)
-
 ### Develop Branch
 [![Build Status](https://travis-ci.org/tylertownsend/TTree.svg?branch=develop)](https://travis-ci.org/tylertownsend/TTree)
 [![Coverage Status](https://coveralls.io/repos/github/tylertownsend/TTree/badge.svg?branch=develop)](https://coveralls.io/github/tylertownsend/TTree?branch=develop)
