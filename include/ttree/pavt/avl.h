@@ -1,7 +1,7 @@
 #ifndef TTREE_INCLUDE_PAVT_PAVT_AVL_TREE_H_
 #define TTREE_INCLUDE_PAVT_PAVT_AVL_TREE_H_ 
 
-#include <PaVT/pavt/bst.h>
+#include <ttree/pavt/bst.h>
 
 namespace pavt {
 

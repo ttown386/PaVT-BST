@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <PaVT/sequential/avl.h>
+#include <ttree/sequential/avl.h>
 
 using namespace pavt;
 namespace {

@@ -1,7 +1,7 @@
 #ifndef TTREE_INCLUDE_PAVT_SEQUENTIAL_BST_H_
 #define TTREE_INCLUDE_PAVT_SEQUENTIAL_BST_H_ 
 
-#include <PaVT/Base/binary_tree.h>
+#include <ttree/base/binary_tree.h>
 
 namespace pavt {
 namespace seq {

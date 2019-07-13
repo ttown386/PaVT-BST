@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1.3)
 # Set project name, version and laguages here.
 # Version numbers are available by including "BingoCpp/version.h" in 
 # the source. See version.h.in for some more details.
-project(PaVT VERSION 0.1.1.0 LANGUAGES C CXX)
+project(ttree VERSION 0.1.1.0 LANGUAGES C CXX)
 SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++11 -pthread")
 
 # ---------- version ----------
@@ -35,7 +35,10 @@ SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Make variables referring to all the sources and test files.
-file(GLOB SRC_FILES "src/*.c*" "src/sequential/*.c*")
+file(GLOB SRC_FILES 
+    "src/base/*.c*"
+    "src/sequential/*.c*"
+    "src/pavt/*.c*")
 file(GLOB TEST_FILES "tests/*.cpp")
 list(REMOVE_ITEM TEST_FILES ${PROJECT_SOURCE_DIR}/tests/performance_tests.cpp)
 
