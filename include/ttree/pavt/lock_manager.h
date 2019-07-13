@@ -3,7 +3,7 @@
 
 #include <stack>
 
-#include <PaVT/Base/locknode.h>
+#include <ttree/base/locknode.h>
 
 namespace pavt {
 

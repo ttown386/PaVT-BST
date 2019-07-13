@@ -10,8 +10,8 @@
 #include <unordered_map>
 #include <chrono>
 
-#include <PaVT/Base/binary_tree.h>
-#include <PaVT/pavt/bst.h>
+#include <ttree/base/binary_tree.h>
+#include <ttree/pavt/bst.h>
 
 using namespace pavt;
 using namespace base;
